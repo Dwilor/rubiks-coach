@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cube Coach — Rubik's Connected X</title>
+  <meta name="description" content="Connecte ton Rubik's Connected X et apprends à le résoudre pas à pas, avec un cube 3D qui suit tes mouvements en direct.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <h1>Cube Coach</h1>
+        <p class="tagline">Rubik's Connected X · méthode pas à pas</p>
+      </div>
+    </div>
+    <div class="conn">
+      <span id="status" class="pill">Non connecté</span>
+      <button id="btn-connect" class="btn primary">Connecter mon cube</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage-area">
+      <div id="view" class="view"></div>
+      <div class="hold" id="hold">Tiens le cube : <b>jaune en haut</b>, <b>vert devant</b></div>
+      <div class="hud" id="hud">
+        <div class="hud-empty" id="hud-empty">Lance le guide pour voir le prochain mouvement ici.</div>
+        <div class="hud-move hidden" id="hud-move">
+          <div class="big-move" id="big-move">R</div>
+          <div>
+            <div class="hud-title" id="hud-title">Face droite (orange)</div>
+            <div class="hud-sub" id="hud-sub">sens horaire</div>
+          </div>
+        </div>
+      </div>
+      <p class="view-tip">Glisse pour tourner la vue · double-clic pour la recentrer</p>
+    </section>
+
+    <section class="panel">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="guide" role="tab">Guide</button>
+        <button class="tab" data-tab="cube" role="tab">Mon cube</button>
+        <button class="tab" data-tab="help" role="tab">Notation</button>
+      </nav>
+
+      <div class="tabpane" id="tab-guide">
+        <ol class="stages" id="stages"></ol>
+        <div class="card step" id="step-card">
+          <div class="step-head">
+            <span class="step-stage" id="step-stage">Prêt</span>
+            <span class="step-count" id="step-count"></span>
+          </div>
+          <h2 id="step-title">Mets ton cube dans l'état où il est chez toi</h2>
+          <p id="step-detail">Connecte le cube (son état est lu automatiquement) ou recopie ses couleurs dans l'onglet « Mon cube ». Ensuite, lance le guide.</p>
+          <div class="warn hidden" id="step-warn"></div>
+          <div class="moves" id="step-moves"></div>
+          <div class="actions">
+            <button id="btn-guide" class="btn primary">Lancer le guide</button>
+            <button id="btn-next" class="btn ghost" title="Joue le prochain mouvement sur le cube virtuel">Jouer le mouvement</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpane hidden" id="tab-cube">
+        <div class="card">
+          <h3>Synchroniser l'état</h3>
+          <p class="muted">Le cube connecté envoie l'état qu'il a mémorisé. S'il ne correspond pas à ce que tu as en main (par exemple après un démontage), corrige les couleurs à la main ci-dessous.</p>
+          <div class="actions">
+            <button id="btn-read" class="btn">Lire l'état du cube</button>
+            <button id="btn-solved" class="btn ghost">Cube résolu</button>
+            <button id="btn-random" class="btn ghost">Mélange aléatoire</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Recopier les couleurs</h3>
+          <p class="muted">Tiens ton cube <b>jaune en haut, vert devant</b>. Choisis une couleur puis touche les cases. Les centres ne bougent pas.</p>
+          <div class="palette" id="palette"></div>
+          <div class="net" id="net"></div>
+          <div class="validity" id="validity"></div>
+        </div>
+        <div class="card">
+          <h3>Appliquer un mélange</h3>
+          <p class="muted">Notation officielle des compétitions (blanc en haut, vert devant), par exemple <code>R U2 F' L D2</code>.</p>
+          <div class="row">
+            <input id="scramble" type="text" placeholder="R U R' U' …" autocomplete="off" spellcheck="false">
+            <button id="btn-scramble" class="btn">Appliquer</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Tourner une face à la main</h3>
+          <p class="muted">Utile sans cube connecté (par exemple sur iPhone). Sens vu en regardant la face, cube tenu jaune en haut, vert devant.</p>
+          <div class="pad" id="pad"></div>
+        </div>
+      </div>
+
+      <div class="tabpane hidden" id="tab-help">
+        <div class="card">
+          <h3>Lire les mouvements</h3>
+          <p>Chaque lettre désigne une face, vue avec le cube tenu comme indiqué au-dessus du cube 3D.</p>
+          <ul class="legend">
+            <li><b>U</b> dessus · <b>D</b> dessous · <b>F</b> devant · <b>B</b> derrière · <b>R</b> droite · <b>L</b> gauche</li>
+            <li>Une lettre seule : quart de tour dans le sens des aiguilles d'une montre, en regardant cette face.</li>
+            <li>Avec une apostrophe (<b>R'</b>) : quart de tour dans l'autre sens.</li>
+          </ul>
+          <p>La flèche rose sur le cube 3D montre toujours la face à tourner et le sens. Si tu te trompes, le guide te demande simplement d'annuler le mouvement.</p>
+        </div>
+        <div class="card">
+          <h3>Compatibilité</h3>
+          <p class="muted">La connexion Bluetooth fonctionne avec Chrome ou Edge sur ordinateur et Android. Sur iPhone et iPad, Safari ne la gère pas : utilise l'application gratuite <b>Bluefy</b>, ou bien l'appli sans connexion avec les boutons de l'onglet « Mon cube ».</p>
+        </div>
+        <div class="card">
+          <h3>Intégrer cette page</h3>
+          <p class="muted">Colle ce code sur ton site. L'attribut <code>allow="bluetooth"</code> est indispensable pour connecter le cube depuis la page intégrée.</p>
+          <textarea id="embed-code" readonly rows="3"></textarea>
+          <button id="btn-copy" class="btn">Copier le code</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast hidden" id="toast"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

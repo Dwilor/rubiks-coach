@@ -1,128 +1,1548 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Cube Coach — Rubik's Connected X</title>
-  <meta name="description" content="Connecte ton Rubik's Connected X et apprends à le résoudre pas à pas, avec un cube 3D qui suit tes mouvements en direct.">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUBE·ALGO 8-BIT</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#110f1f; --panel:#1f1b36; --panel2:#2a2548; --ink:#f3efe0; --mute:#9a93c2;
+  --yel:#ffd23f; --pink:#ff3e8a; --cyan:#3ee6ff; --grn:#5bf06f; --blk:#05040b;
+  --px:4px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{
+  font-family:'VT323','Courier New',monospace;font-size:20px;line-height:1.15;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:8px 8px;min-height:100vh;
+}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+/* fallback */.pf{font-family:'Press Start 2P','Courier New',monospace;letter-spacing:0}
+.box{background:var(--panel);position:relative;
+  box-shadow:calc(-1*var(--px)) 0 0 0 var(--blk),var(--px) 0 0 0 var(--blk),0 calc(-1*var(--px)) 0 0 var(--blk),0 var(--px) 0 0 var(--blk),
+  inset calc(-1*var(--px)) calc(-1*var(--px)) 0 0 rgba(0,0,0,.35),inset var(--px) var(--px) 0 0 rgba(255,255,255,.06)}
+.wrap{max-width:1240px;margin:0 auto;padding:18px 16px 60px}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:6px 4px 22px}
+#logoCube{width:72px;height:72px;image-rendering:pixelated}
+.logo h1{margin:0;font-family:'Press Start 2P';font-size:clamp(18px,4vw,30px);color:var(--yel);
+  text-shadow:3px 3px 0 var(--pink),6px 6px 0 var(--blk)}
+.logo p{margin:8px 0 0;color:var(--mute);font-size:20px}
+.logo p b{color:var(--cyan);font-weight:normal}
+nav{display:flex;gap:10px;flex-wrap:wrap;margin:0 4px 26px}
+.tab{font-family:'Press Start 2P';font-size:11px;padding:12px 14px;border:0;cursor:pointer;color:var(--ink);background:var(--panel2);
+  box-shadow:0 0 0 3px var(--blk),0 6px 0 0 var(--blk);transform:translateY(0);transition:transform .05s}
+.tab small{display:block;margin-top:6px;font-size:8px;color:var(--mute)}
+.tab:hover{background:#3a3363}
+.tab.on{background:var(--yel);color:var(--blk);transform:translateY(3px);box-shadow:0 0 0 3px var(--blk),0 3px 0 0 var(--blk)}
+.tab.on small{color:#5a4a00}
+.layout{display:grid;grid-template-columns:minmax(330px,450px) 1fr;gap:34px;align-items:start}
+#viewer{position:sticky;top:14px;padding:16px}
+#list{min-width:0}
+@media (max-width:860px){.layout{grid-template-columns:1fr}#viewer{position:relative;top:0}}
+.stage{position:relative;display:flex;justify-content:center;background:
+  radial-gradient(circle at 50% 45%,#2f2a58 0,#1a1730 70%);margin:-4px -4px 14px;padding:8px 0 4px;
+  box-shadow:inset 0 0 0 3px var(--blk)}
+#cv{image-rendering:pixelated;touch-action:none;cursor:grab;display:block}
+#cv:active{cursor:grabbing}
+.hud{position:absolute;left:10px;top:10px;font-family:'Press Start 2P';font-size:8px;color:var(--mute);line-height:1.8;pointer-events:none}
+.hud2{position:absolute;right:10px;top:10px;font-family:'Press Start 2P';font-size:8px;color:var(--grn)}
+.vtitle{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.vtitle h2{margin:0;font-family:'Press Start 2P';font-size:15px;color:var(--yel)}
+.vsub{color:var(--mute);margin:6px 0 10px;font-size:19px}
+.alg{font-family:'Press Start 2P';font-size:13px;line-height:2.2;background:var(--blk);padding:10px 12px;margin:10px 0;min-height:52px;word-spacing:2px;cursor:default}
+.alg span{padding:3px 4px;margin-right:2px;color:#c8c2e8}
+.alg span.done{color:var(--grn)}
+.alg span.cur{background:var(--pink);color:#fff}
+.alg.hidden{filter:blur(7px);cursor:pointer}
+.alts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.alt{font-family:'Press Start 2P';font-size:8px;padding:7px 8px;background:var(--panel2);border:0;color:var(--mute);cursor:pointer;box-shadow:0 0 0 2px var(--blk)}
+.alt.on{background:var(--cyan);color:var(--blk)}
+.bar{display:flex;gap:3px;margin:8px 0 14px;flex-wrap:wrap}
+.bar i{flex:1;min-width:6px;height:10px;background:#38325f;box-shadow:0 0 0 2px var(--blk)}
+.bar i.d{background:var(--grn)}.bar i.c{background:var(--pink)}
+.ctrl{display:flex;gap:10px;justify-content:center;margin:6px 0 14px}
+.btn{font-family:'Press Start 2P';font-size:12px;min-width:46px;height:44px;padding:0 10px;border:0;cursor:pointer;background:var(--panel2);color:var(--ink);
+  box-shadow:0 0 0 3px var(--blk),0 5px 0 0 var(--blk);position:relative;top:0}
+.btn:active{top:3px;box-shadow:0 0 0 3px var(--blk),0 2px 0 0 var(--blk)}
+.btn.big{background:var(--pink);color:#fff;min-width:70px}
+.btn.y{background:var(--yel);color:var(--blk)}
+.opts{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:center}
+.tg{font-family:'Press Start 2P';font-size:8px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--mute);user-select:none;background:none;border:0;padding:4px 0}
+.tg .sq{width:16px;height:16px;background:var(--blk);box-shadow:0 0 0 2px #4a4380}
+.tg.on{color:var(--ink)}.tg.on .sq{background:var(--grn);box-shadow:0 0 0 2px var(--blk),inset -3px -3px 0 #2a9c3a}
+.spd{display:flex;align-items:center;gap:8px;font-family:'Press Start 2P';font-size:8px;color:var(--mute)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:110px;height:10px;background:var(--blk);box-shadow:0 0 0 2px #4a4380}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:20px;background:var(--yel);box-shadow:0 0 0 2px var(--blk);cursor:pointer;border-radius:0}
+input[type=range]::-moz-range-thumb{width:14px;height:20px;background:var(--yel);border:2px solid var(--blk);border-radius:0}
+.star{font-family:'Press Start 2P';font-size:8px;padding:8px;border:0;cursor:pointer;background:var(--panel2);color:var(--mute);box-shadow:0 0 0 2px var(--blk);white-space:nowrap}
+.star.on{background:var(--yel);color:var(--blk)}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 4px 22px}
+.toolbar .info{color:var(--mute);flex:1;min-width:200px}
+.prog{font-family:'Press Start 2P';font-size:9px;color:var(--grn)}
+.sec{margin:0 4px 34px}
+.sec h3{font-family:'Press Start 2P';font-size:12px;color:var(--cyan);margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.sec h3::before{content:"";width:10px;height:10px;background:var(--pink);box-shadow:3px 3px 0 var(--blk)}
+.sec .d{color:var(--mute);margin:0 0 16px;max-width:70ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:20px}
+.card{padding:10px 10px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;text-align:center;transition:transform .08s}
+.card:hover{transform:translate(-2px,-2px);background:#29244a}
+.card.sel{background:#3a2f6a;outline:3px solid var(--yel);outline-offset:4px}
+.card canvas{image-rendering:pixelated;width:96px;height:96px}
+.card .n{font-family:'Press Start 2P';font-size:9px;color:var(--yel);margin:6px 0 6px;display:flex;gap:6px;align-items:center}
+.card .a{font-size:17px;color:#d8d2f4;line-height:1.05;word-spacing:1px}
+.card .tag{font-family:'Press Start 2P';font-size:7px;background:var(--cyan);color:var(--blk);padding:3px 4px}
+.card .lk{color:var(--grn)}
+.card.learned .n::after{content:"★";color:var(--grn)}
+.notegrid .card canvas{width:96px;height:96px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:18px;color:var(--mute);margin-top:12px;justify-content:center}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;display:inline-block;box-shadow:0 0 0 2px var(--blk)}
+footer{color:#5f5890;text-align:center;margin-top:40px;font-size:18px}
+.cd{position:absolute;left:0;right:0;top:8px;display:flex;justify-content:center;pointer-events:none;font-family:'Press Start 2P','Courier New',monospace;font-size:26px;color:var(--yel);text-shadow:4px 4px 0 var(--pink),8px 8px 0 var(--blk);opacity:0}
+.cd.on{opacity:1;animation:pop .45s steps(3)}@keyframes pop{0%{transform:scale(1.6)}100%{transform:scale(1)}}
+.badge{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-family:'Press Start 2P','Courier New',monospace;font-size:9px;padding:7px 9px;background:var(--blk);color:var(--cyan);box-shadow:0 0 0 2px #4a4380;white-space:nowrap;pointer-events:none}
+.badge:empty{display:none}.badge.ok{color:var(--blk);background:var(--grn);box-shadow:0 0 0 2px var(--blk)}
+.gbox{padding:18px 18px 16px;margin:0 4px 30px}
+.ghead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.ghead h3{margin:0;font-size:13px;color:var(--yel)}
+.lvl{font-size:8px;background:var(--cyan);color:var(--blk);padding:6px 7px}
+.gtxt{color:#d8d2f4;margin:6px 0 12px;max-width:72ch}.gtxt b,.why b,.tip b{color:var(--yel);font-weight:normal}
+.gq{font-size:11px;color:var(--cyan);line-height:1.7;margin:16px 0 6px}
+.gstep{font-size:12px;color:var(--pink);margin:16px 0 10px}
+.why{background:#151229;padding:12px 14px;color:#c8c2e8;box-shadow:inset 4px 0 0 var(--cyan);margin:8px 0 12px;font-size:19px;line-height:1.2}
+.whyb{background:none;border:0;color:var(--cyan);font-size:8px;cursor:pointer;padding:4px 0}
+.tip{background:#2b1630;padding:10px 12px;box-shadow:inset 4px 0 0 var(--pink);margin:6px 0 12px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}
+.pill{font-family:'Press Start 2P','Courier New',monospace;font-size:7px;padding:6px 6px;background:#151229;color:#6c66a0;box-shadow:0 0 0 2px var(--blk)}
+.pill.d{background:#1f4a2a;color:var(--grn)}.pill.c{background:var(--yel);color:var(--blk)}
+.choices{display:flex;flex-direction:column;gap:12px;margin:10px 0 6px}
+.choice{text-align:left;border:0;cursor:pointer;background:var(--panel2);color:var(--ink);padding:14px 14px;box-shadow:0 0 0 3px var(--blk),0 5px 0 0 var(--blk);position:relative;top:0}
+.choice:hover{background:#3a3363}.choice:active{top:3px;box-shadow:0 0 0 3px var(--blk),0 2px 0 0 var(--blk)}
+.choice span{font-size:10px;line-height:1.6}.choice small{display:block;margin-top:6px;color:var(--mute);font-size:19px;font-family:'VT323','Courier New',monospace}
+.choice.ok{background:#1f4a2a}.choice.ok span{color:var(--grn)}
+.gbox .grid{margin:6px 0 12px}
+.gnav{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}.gnav .btn{font-size:9px}
+.gnav.small{border-top:3px dashed #3a3363;padding-top:14px;margin-top:20px}.gnav.small .btn{font-size:8px;height:36px}
+.btn:disabled{opacity:.4;cursor:default}
+.bravo{font-size:30px;color:var(--yel);text-shadow:3px 3px 0 var(--pink),6px 6px 0 var(--blk);margin:20px 0;animation:bl 1s steps(2) 3}
+#bGuideNext{width:100%;margin:4px 0 14px;font-size:10px;height:48px;background:var(--grn);color:var(--blk)}
+.blink{animation:bl 1s steps(2) infinite}@keyframes bl{50%{opacity:0}}
+/* ===== cube connecté ===== */
+header .conn{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.btStat{font-family:'Press Start 2P','Courier New',monospace;font-size:8px;color:var(--mute)}
+.btStat.on{color:var(--grn)}
+header .btBtn{font-size:9px;height:40px}
+body.islive #bReset,body.islive #bBack,body.islive #bPlay,body.islive .opts,body.islive #btnStar,body.islive #vAlts{display:none}
+.lvpal{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 14px}
+.lvsw{width:30px;height:30px;border:0;cursor:pointer;box-shadow:0 0 0 3px var(--blk)}
+.lvsw.on{box-shadow:0 0 0 3px var(--blk),0 0 0 6px var(--yel)}
+.lvnet{display:grid;grid-template-columns:repeat(4,auto);gap:6px;justify-content:start;margin-bottom:6px}
+.lvface{display:grid;grid-template-columns:repeat(3,18px);gap:2px;background:var(--blk);padding:2px}
+.lvs{width:18px;height:18px;border:0;padding:0;cursor:pointer}
+.lvs.ctr{cursor:default;box-shadow:inset 0 0 0 2px rgba(0,0,0,.35)}
+.lvrow{display:flex;gap:10px}
+.lvin{flex:1;min-width:0;font-family:'VT323','Courier New',monospace;font-size:20px;background:var(--blk);color:var(--ink);border:0;padding:8px 10px;box-shadow:0 0 0 3px #4a4380}
+.lvnext{display:flex;align-items:center;gap:14px;background:#151229;padding:12px;box-shadow:inset 4px 0 0 var(--pink);margin:6px 0 10px}
+.lvnext.fix{box-shadow:inset 4px 0 0 var(--yel)}
+.lvnext b{min-width:58px;height:46px;display:grid;place-items:center;font-size:16px;font-weight:normal;box-shadow:0 0 0 3px var(--blk)}
+.lvnext span{font-size:9px;line-height:1.7;display:block}.lvnext small{color:var(--mute);font-size:19px}
+.lvcase{display:flex;align-items:center;gap:14px;margin:4px 0 6px}.lvcase canvas{width:72px;height:72px;image-rendering:pixelated}
+.lvcase span{font-size:9px;color:var(--yel);display:block}.lvcase small{color:var(--mute);font-size:18px}
+.lvtoast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(140%);z-index:60;background:var(--blk);color:var(--cyan);font-size:9px;line-height:1.7;padding:12px 14px;box-shadow:0 0 0 3px #4a4380;max-width:92vw;text-align:center;transition:transform .15s steps(3)}
+.lvtoast.on{transform:translateX(-50%) translateY(0)}
+@media (max-width:860px){header .conn{margin-left:0;width:100%}}
+</style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="logo" aria-hidden="true"></span>
-      <div>
-        <h1>Cube Coach</h1>
-        <p class="tagline">Rubik's Connected X · méthode pas à pas</p>
-      </div>
+<div class="wrap">
+  <header>
+    <canvas id="logoCube" width="24" height="24"></canvas>
+    <div class="logo">
+      <h1>CUBE·ALGO</h1>
+      <p><b>8-BIT</b> · tous les algos du 3×3, du débutant au CFOP, avec cube animé</p>
     </div>
-    <div class="conn">
-      <span id="status" class="pill">Non connecté</span>
-      <button id="btn-connect" class="btn primary">Connecter mon cube</button>
-    </div>
+    <div class="conn"><span class="btStat">◌ CUBE NON CONNECTÉ</span><button class="btn btBtn" onclick="btToggle()">◉ CONNECTER LE CUBE</button></div>
   </header>
 
-  <main class="layout">
-    <section class="stage-area">
-      <div id="view" class="view"></div>
-      <div class="hold" id="hold">Tiens le cube : <b>jaune en haut</b>, <b>vert devant</b></div>
-      <div class="hud" id="hud">
-        <div class="hud-empty" id="hud-empty">Lance le guide pour voir le prochain mouvement ici.</div>
-        <div class="hud-move hidden" id="hud-move">
-          <div class="big-move" id="big-move">R</div>
-          <div>
-            <div class="hud-title" id="hud-title">Face droite (orange)</div>
-            <div class="hud-sub" id="hud-sub">sens horaire</div>
-          </div>
-        </div>
+  <nav id="tabs"></nav>
+
+  <div class="layout">
+    <section id="viewer" class="box">
+      <div class="stage">
+        <canvas id="cv"></canvas>
+        <div class="hud">GLISSE POUR<br>TOURNER</div>
+        <div class="hud2" id="hudMoves">0/0</div>
+        <div id="cd" class="cd"></div>
+        <div id="badge" class="badge"></div>
       </div>
-      <p class="view-tip">Glisse pour tourner la vue · double-clic pour la recentrer</p>
-    </section>
-
-    <section class="panel">
-      <nav class="tabs" role="tablist">
-        <button class="tab active" data-tab="guide" role="tab">Guide</button>
-        <button class="tab" data-tab="cube" role="tab">Mon cube</button>
-        <button class="tab" data-tab="help" role="tab">Notation</button>
-      </nav>
-
-      <div class="tabpane" id="tab-guide">
-        <ol class="stages" id="stages"></ol>
-        <div class="card step" id="step-card">
-          <div class="step-head">
-            <span class="step-stage" id="step-stage">Prêt</span>
-            <span class="step-count" id="step-count"></span>
-          </div>
-          <h2 id="step-title">Mets ton cube dans l'état où il est chez toi</h2>
-          <p id="step-detail">Connecte le cube (son état est lu automatiquement) ou recopie ses couleurs dans l'onglet « Mon cube ». Ensuite, lance le guide.</p>
-          <div class="warn hidden" id="step-warn"></div>
-          <div class="moves" id="step-moves"></div>
-          <div class="actions">
-            <button id="btn-guide" class="btn primary">Lancer le guide</button>
-            <button id="btn-next" class="btn ghost" title="Joue le prochain mouvement sur le cube virtuel">Jouer le mouvement</button>
-          </div>
-        </div>
+      <div class="vtitle"><h2 id="vName">—</h2><button class="star" id="btnStar">☆ APPRIS</button></div>
+      <div class="vsub" id="vSub"></div>
+      <div class="alg" id="vAlg" title="Touche pour révéler"></div>
+      <div class="alts" id="vAlts"></div>
+      <div class="bar" id="vBar"></div>
+      <div class="ctrl">
+        <button class="btn" id="bReset" title="Recommencer">⏮</button>
+        <button class="btn" id="bBack" title="Coup précédent">◀</button>
+        <button class="btn big" id="bPlay" title="Lecture">▶</button>
+        <button class="btn" id="bFwd" title="Coup suivant">▶|</button>
+        <button class="btn" id="bView" title="Recentrer la vue">◎</button>
       </div>
-
-      <div class="tabpane hidden" id="tab-cube">
-        <div class="card">
-          <h3>Synchroniser l'état</h3>
-          <p class="muted">Le cube connecté envoie l'état qu'il a mémorisé. S'il ne correspond pas à ce que tu as en main (par exemple après un démontage), corrige les couleurs à la main ci-dessous.</p>
-          <div class="actions">
-            <button id="btn-read" class="btn">Lire l'état du cube</button>
-            <button id="btn-solved" class="btn ghost">Cube résolu</button>
-            <button id="btn-random" class="btn ghost">Mélange aléatoire</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Recopier les couleurs</h3>
-          <p class="muted">Tiens ton cube <b>jaune en haut, vert devant</b>. Choisis une couleur puis touche les cases. Les centres ne bougent pas.</p>
-          <div class="palette" id="palette"></div>
-          <div class="net" id="net"></div>
-          <div class="validity" id="validity"></div>
-        </div>
-        <div class="card">
-          <h3>Appliquer un mélange</h3>
-          <p class="muted">Notation officielle des compétitions (blanc en haut, vert devant), par exemple <code>R U2 F' L D2</code>.</p>
-          <div class="row">
-            <input id="scramble" type="text" placeholder="R U R' U' …" autocomplete="off" spellcheck="false">
-            <button id="btn-scramble" class="btn">Appliquer</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Tourner une face à la main</h3>
-          <p class="muted">Utile sans cube connecté (par exemple sur iPhone). Sens vu en regardant la face, cube tenu jaune en haut, vert devant.</p>
-          <div class="pad" id="pad"></div>
-        </div>
+      <button class="btn" id="bGuideNext" style="display:none">✓ C’EST FAIT · ÉTAPE SUIVANTE</button>
+      <div class="opts">
+        <button class="tg" id="tFull"><span class="sq"></span>TOUT EN COULEUR</button>
+        <button class="tg" id="tLoop"><span class="sq"></span>BOUCLE</button>
+        <button class="tg" id="tSound"><span class="sq"></span>SON</button>
+        <label class="spd">VITESSE <input type="range" id="speed" min="0.4" max="3" step="0.1" value="1.2"></label>
       </div>
-
-      <div class="tabpane hidden" id="tab-help">
-        <div class="card">
-          <h3>Lire les mouvements</h3>
-          <p>Chaque lettre désigne une face, vue avec le cube tenu comme indiqué au-dessus du cube 3D.</p>
-          <ul class="legend">
-            <li><b>U</b> dessus · <b>D</b> dessous · <b>F</b> devant · <b>B</b> derrière · <b>R</b> droite · <b>L</b> gauche</li>
-            <li>Une lettre seule : quart de tour dans le sens des aiguilles d'une montre, en regardant cette face.</li>
-            <li>Avec une apostrophe (<b>R'</b>) : quart de tour dans l'autre sens.</li>
-          </ul>
-          <p>La flèche rose sur le cube 3D montre toujours la face à tourner et le sens. Si tu te trompes, le guide te demande simplement d'annuler le mouvement.</p>
-        </div>
-        <div class="card">
-          <h3>Compatibilité</h3>
-          <p class="muted">La connexion Bluetooth fonctionne avec Chrome ou Edge sur ordinateur et Android. Sur iPhone et iPad, Safari ne la gère pas : utilise l'application gratuite <b>Bluefy</b>, ou bien l'appli sans connexion avec les boutons de l'onglet « Mon cube ».</p>
-        </div>
-        <div class="card">
-          <h3>Intégrer cette page</h3>
-          <p class="muted">Colle ce code sur ton site. L'attribut <code>allow="bluetooth"</code> est indispensable pour connecter le cube depuis la page intégrée.</p>
-          <textarea id="embed-code" readonly rows="3"></textarea>
-          <button id="btn-copy" class="btn">Copier le code</button>
-        </div>
+      <div class="legend">
+        <span><i style="background:#ffd000"></i>haut jaune</span>
+        <span><i style="background:#00c853"></i>devant vert</span>
+        <span><i style="background:#ff8a00"></i>droite orange</span>
       </div>
     </section>
-  </main>
 
-  <div class="toast hidden" id="toast"></div>
-  <script type="module" src="js/app.js"></script>
+    <section id="list"></section>
+  </div>
+  <footer class="pf" style="font-size:8px;line-height:2">BLANC EN BAS · VERT DEVANT · ESPACE = LECTURE · ← → = COUP PAR COUP</footer>
+</div>
+
+<script>
+// ===== CUBE CONNECTÉ : moteur d'état, suivi des mouvements et guide automatique =====
+// Repère : jaune en haut (U), blanc en bas (D), vert devant (F), orange à droite (R).
+// Une couleur est notée par la lettre de la face dont c'est le centre.
+(function (G) {
+  const FACES = ['U', 'R', 'F', 'D', 'L', 'B'];
+  const NORMALS = { U: [0, 1, 0], D: [0, -1, 0], R: [1, 0, 0], L: [-1, 0, 0], F: [0, 0, 1], B: [0, 0, -1] };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const key = (p, n) => p.join(',') + '|' + n.join(',');
+  const fix0 = (v) => v.map((x) => x + 0);
+  function rotCW(v, a) { const d = dot(a, v), c = cross(a, v); return fix0([d * a[0] - c[0], d * a[1] - c[1], d * a[2] - c[2]]); }
+
+  const STICKERS = [], INDEX = new Map();
+  for (const f of FACES) {
+    const n = NORMALS[f];
+    for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+      const p = [x, y, z]; if (dot(p, n) !== 1) continue;
+      INDEX.set(key(p, n), STICKERS.length); STICKERS.push({ pos: p, normal: n, face: f });
+    }
+  }
+  const sIdx = (p, n) => INDEX.get(key(p, n));
+  const PERM = {};
+  for (const f of FACES) for (const q of [1, 3]) {
+    const n = NORMALS[f];
+    PERM[f + q] = STICKERS.map((s, i) => {
+      if (dot(s.pos, n) !== 1) return i;
+      let p = s.pos, nn = s.normal;
+      for (let t = 0; t < q; t++) { p = rotCW(p, n); nn = rotCW(nn, n); }
+      return INDEX.get(key(p, nn));
+    });
+  }
+  const solved = () => STICKERS.map((s) => s.face);
+  function turn(st, f, q) { // q : 1 = horaire, 2, 3 = anti-horaire
+    q = ((q % 4) + 4) % 4; if (!q) return st;
+    if (q === 2) return turn(turn(st, f, 1), f, 1);
+    const P = PERM[f + q], out = new Array(54);
+    for (let i = 0; i < 54; i++) out[P[i]] = st[i];
+    return out;
+  }
+  const isSolved = (st) => st.every((c, i) => c === STICKERS[i].face);
+
+  // ---- pièces ----
+  const POS = [];
+  for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+    const nz = (x !== 0) + (y !== 0) + (z !== 0); if (nz >= 2) POS.push([x, y, z]);
+  }
+  const POS_ST = new Map(POS.map((p) => [p.join(), STICKERS.map((s, i) => [s, i]).filter(([s]) => s.pos.join() === p.join()).map(([, i]) => i)]));
+  const posSt = (p) => POS_ST.get(p.join());
+  function homeOf(cols) { const p = [0, 0, 0]; for (const c of cols) { const n = NORMALS[c]; p[0] += n[0]; p[1] += n[1]; p[2] += n[2]; } return p; }
+  function findPiece(st, cols) {
+    const want = [...cols].sort().join('');
+    for (const p of POS) { const idx = posSt(p); if (idx.length === cols.length && idx.map((i) => st[i]).sort().join('') === want) return p; }
+    return null;
+  }
+  const pieceSolved = (st, cols) => posSt(homeOf(cols)).every((i) => st[i] === STICKERS[i].face);
+  const piecePlaced = (st, cols) => { const p = findPiece(st, cols); return p && p.join() === homeOf(cols).join(); };
+  const colorAt = (st, p, n) => st[sIdx(p, n)];
+
+  // ---- conversion d'un algo (avec rotations, tranches, doubles couches) en quarts de tour ----
+  const RING = ['F', 'R', 'B', 'L'];
+  const ROT = {
+    x: [['U', 'F'], ['F', 'D'], ['D', 'B'], ['B', 'U']],
+    y: [['L', 'F'], ['F', 'R'], ['R', 'B'], ['B', 'L']],
+    z: [['R', 'U'], ['U', 'L'], ['L', 'D'], ['D', 'R']],
+  };
+  function rotate(frame, axis, amt) {
+    for (let t = 0; t < ((amt % 4) + 4) % 4; t++) {
+      const old = { ...frame };
+      for (const [dst, src] of ROT[axis]) frame[dst] = old[src];
+    }
+  }
+  const WIDE = { r: ['L', 'x', 1], l: ['R', 'x', -1], u: ['D', 'y', 1], d: ['U', 'y', -1], f: ['B', 'z', 1], b: ['F', 'z', -1] };
+  const SLICE = { M: [['R', 1], ['L', -1], 'x', -1], E: [['U', 1], ['D', -1], 'y', -1], S: [['F', -1], ['B', 1], 'z', 1] };
+  const splitAlg = (alg) => alg.replace(/[()]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  function parseTok(t) {
+    const m = t.match(/^([URFDLBMESxyzurfdlb])(w?)(2?)('?)(2?)$/);
+    if (!m) throw new Error('Mouvement inconnu : ' + t);
+    let b = m[1]; if (m[2]) b = b.toLowerCase();
+    let amt = (m[3] || m[5]) ? 2 : 1; if (m[4]) amt = -amt;
+    return { b, amt };
+  }
+  // Renvoie [{tok, chunks:[{U:1,...}]}] ; k = nombre de rotations y de départ (vue).
+  function convert(alg, k = 0) {
+    const frame = { U: 'U', D: 'D', F: 'F', B: 'B', R: 'R', L: 'L' };
+    rotate(frame, 'y', k);
+    return splitAlg(alg).map((tok) => {
+      const { b, amt } = parseTok(tok);
+      const chunks = [];
+      const q = (a) => ((a % 4) + 4) % 4;
+      if ('URFDLB'.includes(b)) chunks.push({ [frame[b]]: q(amt) });
+      else if ('xyz'.includes(b)) rotate(frame, b, amt);
+      else if (WIDE[b]) { const [f, ax, s] = WIDE[b]; chunks.push({ [frame[f]]: q(amt) }); rotate(frame, ax, s * amt); }
+      else if (SLICE[b]) { const [[f1, s1], [f2, s2], ax, s] = SLICE[b]; chunks.push({ [frame[f1]]: q(s1 * amt), [frame[f2]]: q(s2 * amt) }); rotate(frame, ax, s * amt); }
+      return { tok, chunks };
+    });
+  }
+  function applyChunks(st, conv) {
+    for (const t of conv) for (const ch of t.chunks) for (const f in ch) st = turn(st, f, ch[f]);
+    return st;
+  }
+  const applyAlg = (st, alg, k = 0) => applyChunks(st, convert(alg, k));
+  const qCount = (conv) => conv.reduce((a, t) => a + t.chunks.reduce((b, ch) => b + Object.values(ch).reduce((c, v) => c + (v === 2 ? 2 : 1), 0), 0), 0);
+  const U_PRE = ['', 'U', 'U2', "U'"];
+
+  // ---- suivi des mouvements de l'utilisateur ----
+  class Tracker {
+    constructor(conv) {
+      this.conv = conv; this.pending = [];
+      conv.forEach((t, i) => t.chunks.forEach((ch) => this.pending.push({ need: { ...ch }, tok: i })));
+      this.fix = 0;
+    }
+    get done() { return this.pending.length === 0; }
+    // index du premier token pas encore terminé
+    get cur() { const p = this.pending.find((c) => !c.fix); return p ? p.tok : this.conv.length; }
+    next() { const c = this.pending[0]; if (!c) return null; const f = Object.keys(c.need)[0]; return f + (c.need[f] === 3 ? "'" : c.need[f] === 2 ? '2' : ''); }
+    move(f, d) { // d : 1 ou -1 ; renvoie true si attendu
+      const c = this.pending[0];
+      if (c && c.need[f] !== undefined) {
+        const r = ((c.need[f] - d) % 4 + 4) % 4;
+        if (r) c.need[f] = r; else delete c.need[f];
+        if (!Object.keys(c.need).length) { this.pending.shift(); if (c.fix) this.fix--; }
+        return true;
+      }
+      this.pending.unshift({ need: { [f]: ((-d % 4) + 4) % 4 }, tok: -1, fix: true });
+      this.fix++;
+      return false;
+    }
+  }
+
+  // ---- méthodes de résolution ----
+  let DATA = null, ITEMS = {};
+  const CROSS = ['F', 'R', 'B', 'L'].map((c) => ['D', c]);
+  const CORNERS = RING.map((f, i) => ['D', f, RING[(i + 1) % 4]]);
+  const MIDS = RING.map((f, i) => [f, RING[(i + 1) % 4]]);
+  const crossOK = (st) => CROSS.every((e) => pieceSolved(st, e));
+  const slotOK = (st, i) => pieceSolved(st, CORNERS[i]) && pieceSolved(st, MIDS[i]);
+  const f2lOK = (st) => crossOK(st) && [0, 1, 2, 3].every((i) => slotOK(st, i));
+  const topEdgesOriented = (st) => RING.every((f) => { const n = NORMALS[f]; return colorAt(st, [n[0], 1, n[2]], [0, 1, 0]) === 'U'; });
+  const topYellow = (st) => STICKERS.every((s, i) => s.face !== 'U' || st[i] === 'U');
+  const TOPC = RING.map((f, i) => ['U', f, RING[(i + 1) % 4]]);
+  const withAUF = (st, fn) => [0, 1, 2, 3].some((a) => fn(turn(st, 'U', a)));
+  const cornersPermuted = (st) => withAUF(st, (s) => TOPC.every((c) => piecePlaced(s, c)));
+  // vue k telle que l'emplacement avant-droit soit en (x, z)
+  function viewForFR(x, z) {
+    for (let k = 0; k < 4; k++) { const f = NORMALS[RING[k]], r = NORMALS[RING[(k + 1) % 4]]; if (f[0] + r[0] === x && f[2] + r[2] === z) return k; }
+    return 0;
+  }
+  const NAME = { U: 'jaune', D: 'blanc', F: 'vert', B: 'bleu', R: 'orange', L: 'rouge' };
+  const pname = (cols) => cols.map((c) => NAME[c]).join('-');
+
+  // Croix : IDA* arête par arête
+  const M18 = []; for (const f of FACES) for (const t of ['', '2', "'"]) M18.push(f + t);
+  const P18 = M18.map((m) => { const q = m.endsWith('2') ? 2 : m.endsWith("'") ? 3 : 1; return STICKERS.map((_, i) => { let j = i; for (let t = 0; t < (q === 3 ? 1 : q); t++) j = PERM[m[0] + (q === 3 ? 3 : 1)][j]; return j; }); });
+  const DIST = new Map();
+  function distTable(h) {
+    if (DIST.has(h)) return DIST.get(h);
+    const d = new Array(54).fill(99); d[h] = 0; let fr = [h];
+    while (fr.length) { const nx = []; for (const i of fr) for (const P of P18) if (d[P[i]] === 99) { d[P[i]] = d[i] + 1; nx.push(P[i]); } fr = nx; }
+    DIST.set(h, d); return d;
+  }
+  function crossSearch(st, targets) {
+    const homes = targets.map((t) => sIdx(homeOf(t), NORMALS.D));
+    const tabs = homes.map(distTable);
+    const start = targets.map((t) => posSt(findPiece(st, t)).find((i) => st[i] === 'D'));
+    const h = (cur) => Math.max(...cur.map((v, i) => tabs[i][v]));
+    const path = [];
+    const dfs = (cur, g, bound, last) => {
+      const f = g + h(cur); if (f > bound) return f;
+      if (cur.every((v, i) => v === homes[i])) return true;
+      let min = 99;
+      for (let m = 0; m < 18; m++) {
+        if (M18[m][0] === last) continue;
+        path.push(M18[m]);
+        const r = dfs(cur.map((v) => P18[m][v]), g + 1, bound, M18[m][0]);
+        if (r === true) return true;
+        path.pop(); if (r < min) min = r;
+      }
+      return min;
+    };
+    let bound = h(start);
+    for (let it = 0; it < 14; it++) { const r = dfs(start, 0, bound, null); if (r === true) return path.join(' '); bound = r; }
+    return null;
+  }
+
+  // Construit une étape à partir d'un algo
+  function mkStep(stage, title, detail, alg, k, id) {
+    const conv = convert(alg, k);
+    return { stage, title, detail, alg, view: k, id: id || null, conv };
+  }
+  function algsOf(ids, withAlts = true) {
+    const out = [];
+    for (const id of ids) { const it = ITEMS[id]; if (!it) continue; out.push({ id, alg: it.alg }); if (withAlts) for (const a of it.alts || []) out.push({ id, alg: a }); }
+    return out;
+  }
+  const CACHE = new Map();
+  function convC(alg, k) { const kk = k + '|' + alg; if (!CACHE.has(kk)) CACHE.set(kk, convert(alg, k)); return CACHE.get(kk); }
+  // Cherche le meilleur cas : vue k parmi views, pré-rotation U, algo parmi cands.
+  function findCase(st, cands, views, goal) {
+    let best = null;
+    for (const k of views) for (const pre of U_PRE) {
+      const s0 = pre ? turn(st, 'U', pre === 'U' ? 1 : pre === 'U2' ? 2 : 3) : st;
+      for (const c of cands) {
+        const conv = convC(c.alg, k);
+        const s1 = applyChunks(s0, conv);
+        if (!goal(s1)) continue;
+        const cost = qCount(conv) + (pre ? 1 : 0);
+        if (!best || cost < best.cost) best = { ...c, k, pre, cost, after: s1 };
+      }
+    }
+    return best;
+  }
+  // Recherche en plusieurs algos (étapes avec répétitions)
+  function chainCase(st, cands, goal, depth) {
+    for (let d = 1; d <= depth; d++) {
+      const path = [];
+      const dfs = (s, left) => {
+        for (const pre of U_PRE) {
+          const s0 = pre ? applyAlg(s, pre) : s;
+          for (const c of cands) {
+            const s1 = applyChunks(s0, convC(c.alg, 0));
+            path.push({ ...c, pre, k: 0, after: s1 });
+            if (left === 1 ? goal(s1) : dfs(s1, left - 1)) return true;
+            path.pop();
+          }
+        }
+        return false;
+      };
+      if (dfs(st, d)) return path;
+    }
+    return null;
+  }
+  const withPre = (c) => (c.pre ? c.pre + ' ' : '') + c.alg;
+  const holdTxt = (k) => `vert devant`.replace('vert', NAME[RING[k]]);
+
+  function planCross(P) {
+    for (let n = 0; n < 4; n++) {
+      const done = CROSS.filter((e) => pieceSolved(P.st, e));
+      const todo = CROSS.filter((e) => !pieceSolved(P.st, e));
+      if (!todo.length) return;
+      let best = null;
+      for (const e of todo) { const s = crossSearch(P.st, [...done, e]); if (s !== null && (!best || s.split(' ').length < best.s.split(' ').length)) best = { e, s }; }
+      if (!best) throw new Error('croix');
+      P.add(mkStep(0, `Croix · arête ${pname(best.e)}`, `Amène l’arête ${pname(best.e)} en bas, sous le centre ${NAME[best.e[1]]}, blanc vers le bas.`, best.s, 0));
+    }
+  }
+  function planBegCorners(P) {
+    for (let n = 0; n < 10; n++) {
+      const todo = [0, 1, 2, 3].filter((i) => !pieceSolved(P.st, CORNERS[i]));
+      if (!todo.length) return;
+      const solvedC = [0, 1, 2, 3].filter((i) => pieceSolved(P.st, CORNERS[i]));
+      let best = null;
+      for (const i of todo) {
+        const h = homeOf(CORNERS[i]), k = viewForFR(h[0], h[2]);
+        const r = findCase(P.st, algsOf(['b2-1', 'b2-2', 'b2-3', 'b2-4', 'b2-5'], false), [k],
+          (s) => crossOK(s) && pieceSolved(s, CORNERS[i]) && solvedC.every((j) => pieceSolved(s, CORNERS[j])));
+        if (r && (!best || r.cost < best.cost)) best = { ...r, i };
+      }
+      if (best) { P.add(mkStep(1, `Coin ${pname(CORNERS[best.i])}`, `Tiens le cube ${holdTxt(best.k)}. ${best.pre ? 'Tourne d’abord le dessus (' + best.pre + ') pour amener le coin au-dessus de sa place, puis applique' : 'Applique'} l’algo.`, withPre(best), best.k, best.id)); continue; }
+      // coin coincé en bas au mauvais endroit : on le remonte
+      const i = todo.find((j) => findPiece(P.st, CORNERS[j])[1] === -1);
+      const p = findPiece(P.st, CORNERS[i]);
+      P.add(mkStep(1, `Sortir le coin ${pname(CORNERS[i])}`, 'Ce coin est coincé en bas au mauvais endroit : le « sexy move » le remonte.', "R U R' U'", viewForFR(p[0], p[2]), 'b2-6'));
+    }
+    throw new Error('coins');
+  }
+  function planMiddle(P) {
+    for (let n = 0; n < 10; n++) {
+      const todo = [0, 1, 2, 3].filter((i) => !pieceSolved(P.st, MIDS[i]));
+      if (!todo.length) return;
+      const solvedM = [0, 1, 2, 3].filter((i) => pieceSolved(P.st, MIDS[i]));
+      const base = (s) => crossOK(s) && CORNERS.every((c) => pieceSolved(s, c)) && solvedM.every((j) => pieceSolved(s, MIDS[j]));
+      let best = null;
+      for (const i of todo) {
+        const k = viewForFR(...[homeOf(MIDS[i])[0], homeOf(MIDS[i])[2]]);
+        const r = findCase(P.st, algsOf(['b3-1', 'b3-2', 'b3-3'], false), [k, (k + 1) % 4], (s) => base(s) && pieceSolved(s, MIDS[i]));
+        if (r && (!best || r.cost < best.cost)) best = { ...r, i };
+      }
+      if (best) { P.add(mkStep(2, `Arête ${pname(MIDS[best.i])}`, `Tiens le cube ${holdTxt(best.k)}.${best.pre ? ' Tourne d’abord le dessus (' + best.pre + ').' : ''}`, withPre(best), best.k, best.id)); continue; }
+      const i = todo.find((j) => findPiece(P.st, MIDS[j])[1] === 0);
+      const p = findPiece(P.st, MIDS[i]);
+      P.add(mkStep(2, `Sortir l’arête ${pname(MIDS[i])}`, 'Cette arête est coincée dans la mauvaise case : on la remonte avec l’algo de droite.', "U R U' R' U' F' U F", viewForFR(p[0], p[2]), 'b3-1'));
+    }
+    throw new Error('couronne');
+  }
+  function planOne(P, stage, ids, goal, label, withAlts = true) {
+    if (goal(P.st)) return;
+    const r = findCase(P.st, algsOf(ids, withAlts), [0], goal);
+    if (!r) throw new Error(label);
+    P.add(mkStep(stage, `${label} · ${ITEMS[r.id].name}`, r.pre ? `Tourne d’abord le dessus (${r.pre}) pour retrouver l’image, puis applique l’algo.` : 'Applique l’algo, cube tenu vert devant.', withPre(r), 0, r.id));
+  }
+  function planChain(P, stage, ids, goal, label, depth) {
+    if (goal(P.st)) return;
+    const path = chainCase(P.st, algsOf(ids, false), goal, depth);
+    if (!path) throw new Error(label);
+    path.forEach((c, j) => P.add(mkStep(stage, `${label} · ${ITEMS[c.id].name}${path.length > 1 ? ` (${j + 1}/${path.length})` : ''}`, c.pre ? `Tourne d’abord le dessus (${c.pre}), puis applique l’algo.` : 'Applique l’algo, cube tenu vert devant.', withPre(c), 0, c.id)));
+  }
+  function planAUF(P, stage) {
+    for (let a = 1; a < 4; a++) if (isSolved(turn(P.st, 'U', a))) { P.add(mkStep(stage, 'Dernier alignement', 'Tourne le dessus pour finir le cube.', U_PRE[a], 0)); return; }
+  }
+  function planF2L(P) {
+    for (let n = 0; n < 12; n++) {
+      if (!crossOK(P.st)) throw new Error('f2l');
+      const todo = [0, 1, 2, 3].filter((i) => !slotOK(P.st, i));
+      if (!todo.length) return;
+      const ok = [0, 1, 2, 3].filter((i) => slotOK(P.st, i));
+      let best = null;
+      for (const i of todo) {
+        const h = homeOf(CORNERS[i]), k = viewForFR(h[0], h[2]);
+        const r = findCase(P.st, algsOf(DATA.f2l.flatMap((s) => s.items.map((it) => it.id))), [k],
+          (s) => crossOK(s) && slotOK(s, i) && ok.every((j) => slotOK(s, j)));
+        if (r && (!best || r.cost < best.cost)) best = { ...r, i };
+      }
+      if (best) { P.add(mkStep(1, `Paire ${pname(MIDS[best.i])} · ${ITEMS[best.id].name}`, `Tiens le cube ${holdTxt(best.k)} : l’emplacement devant-droite est celui de la paire.${best.pre ? ' Tourne d’abord le dessus (' + best.pre + ').' : ''}`, withPre(best), best.k, best.id)); continue; }
+      // une pièce de paire est coincée dans un autre emplacement : on la sort
+      let slot = null;
+      for (const i of todo) {
+        for (const p of [findPiece(P.st, CORNERS[i]), findPiece(P.st, MIDS[i])]) {
+          if (p[1] <= 0) { const s = viewForFR(p[0], p[2]); if (!ok.includes([0, 1, 2, 3].find((j) => viewForFR(homeOf(CORNERS[j])[0], homeOf(CORNERS[j])[2]) === s))) { slot = s; break; } }
+        }
+        if (slot !== null) break;
+      }
+      if (slot === null) throw new Error('f2l bloqué');
+      P.add(mkStep(1, 'Sortir une pièce coincée', 'Une pièce de la paire est coincée dans un autre emplacement : R U R′ la remonte.', "R U R'", slot));
+    }
+    throw new Error('f2l');
+  }
+
+  const METHODS = {
+    beg: { name: 'DÉBUTANT', stages: ['Croix blanche', 'Coins blancs', '2e couronne', 'Croix jaune', 'Face jaune', 'Placer les coins', 'Placer les arêtes'],
+      plan(P) {
+        planCross(P); planBegCorners(P); planMiddle(P);
+        planOne(P, 3, ['b4-1', 'b4-2', 'b4-3'], (s) => f2lOK(s) && topEdgesOriented(s), 'Croix jaune', false);
+        planChain(P, 4, ['b5-1', 'b5-2'], (s) => f2lOK(s) && topYellow(s), 'Face jaune', 3);
+        planChain(P, 5, ['b6-1'], (s) => f2lOK(s) && topYellow(s) && cornersPermuted(s), 'Coins', 2);
+        planChain(P, 6, ['b7-1', 'b7-2'], (s) => withAUF(s, isSolved), 'Arêtes', 2);
+        planAUF(P, 6);
+      } },
+    cfop2: { name: 'CFOP 2-LOOK', stages: ['Croix', 'F2L', 'OLL 1/2', 'OLL 2/2', 'PLL 1/2', 'PLL 2/2'],
+      plan(P) {
+        planCross(P); planF2L(P);
+        planOne(P, 2, ['b4-1', 'b4-2', 'b4-3'], (s) => f2lOK(s) && topEdgesOriented(s), 'OLL', false);
+        planOne(P, 3, ['o21', 'o22', 'o23', 'o24', 'o25', 'o26', 'o27'], (s) => f2lOK(s) && topYellow(s), 'OLL');
+        planOne(P, 4, ['pT', 'pY'], (s) => f2lOK(s) && topYellow(s) && cornersPermuted(s), 'PLL');
+        planOne(P, 5, ['pUa', 'pUb', 'pH', 'pZ'], (s) => withAUF(s, isSolved), 'PLL');
+        planAUF(P, 5);
+      } },
+    cfop: { name: 'CFOP COMPLET', stages: ['Croix', 'F2L', 'OLL', 'PLL'],
+      plan(P) {
+        planCross(P); planF2L(P);
+        planOne(P, 2, DATA.oll.flatMap((s) => s.items.map((i) => i.id)), (s) => f2lOK(s) && topYellow(s), 'OLL');
+        planOne(P, 3, DATA.pll.flatMap((s) => s.items.map((i) => i.id)), (s) => withAUF(s, isSolved), 'PLL');
+        planAUF(P, 3);
+      } },
+  };
+  function plan(st, method) {
+    const P = { st: st.slice(), steps: [], add(step) { this.st = applyChunks(this.st, step.conv); step.after = this.st; this.steps.push(step); } };
+    METHODS[method].plan(P);
+    if (!isSolved(P.st)) throw new Error('plan incomplet');
+    return P.steps;
+  }
+
+  // ---- validation d'un état saisi ----
+  function validate(st) {
+    const cnt = {}; for (const c of st) cnt[c] = (cnt[c] || 0) + 1;
+    for (const f of FACES) if (cnt[f] !== 9) return `Il faut 9 cases ${NAME[f]} (il y en a ${cnt[f] || 0}).`;
+    const opp = { U: 'D', D: 'U', F: 'B', B: 'F', R: 'L', L: 'R' };
+    const seen = new Set();
+    const corners = POS.filter((p) => p.every((v) => v)), edges = POS.filter((p) => p.filter((v) => v).length === 2);
+    for (const p of POS) {
+      const cols = posSt(p).map((i) => st[i]);
+      for (let a = 0; a < cols.length; a++) for (let b = a + 1; b < cols.length; b++) if (cols[a] === cols[b] || opp[cols[a]] === cols[b]) return `Une pièce a des couleurs impossibles (${cols.map((c) => NAME[c]).join(', ')}).`;
+      const id = cols.slice().sort().join(''); if (seen.has(id)) return 'La même pièce apparaît deux fois.'; seen.add(id);
+    }
+    let flips = 0;
+    for (const p of edges) {
+      const idx = posSt(p);
+      const ref = idx.find((i) => STICKERS[i].normal[1] !== 0) ?? idx.find((i) => STICKERS[i].normal[2] !== 0);
+      const cols = idx.map((i) => st[i]); const ud = cols.some((c) => c === 'U' || c === 'D');
+      if (!(ud ? (st[ref] === 'U' || st[ref] === 'D') : (st[ref] === 'F' || st[ref] === 'B'))) flips++;
+    }
+    if (flips % 2) return 'Une arête est retournée : impossible sur un vrai cube.';
+    let tw = 0;
+    for (const p of corners) {
+      const idx = posSt(p); const ud = idx.find((i) => st[i] === 'U' || st[i] === 'D'); const ref = idx.find((i) => STICKERS[i].normal[1] !== 0);
+      if (ud !== ref) tw += dot(cross(STICKERS[ref].normal, STICKERS[ud].normal), p) < 0 ? 1 : 2;
+    }
+    if (tw % 3) return 'Un coin est tourné : impossible sur un vrai cube.';
+    const hk = (q) => posSt(q).map((i) => STICKERS[i].face).sort().join('');
+    const perm = (list) => list.map((p) => { const id = posSt(p).map((i) => st[i]).sort().join(''); return list.findIndex((q) => hk(q) === id); });
+    const par = (a) => { let n = 0; const v = []; for (let i = 0; i < a.length; i++) { if (v[i]) continue; let j = i, l = 0; while (!v[j]) { v[j] = 1; j = a[j]; l++; } n += l - 1; } return n % 2; };
+    if (par(perm(corners)) !== par(perm(edges))) return 'Deux pièces sont échangées : impossible sur un vrai cube.';
+    return null;
+  }
+
+  // ---- cube Bluetooth (notation officielle : blanc en haut, vert devant) ----
+  const NATIVE = { U: 'D', D: 'U', R: 'L', L: 'R', F: 'F', B: 'B' };
+  function nativeFaceletPos(face, k) {
+    const r = Math.floor(k / 3), c = k % 3;
+    switch (face) {
+      case 'U': return [[c - 1, 1, r - 1], [0, 1, 0]]; case 'R': return [[1, 1 - r, 1 - c], [1, 0, 0]];
+      case 'F': return [[c - 1, 1 - r, 1], [0, 0, 1]]; case 'D': return [[c - 1, -1, 1 - r], [0, -1, 0]];
+      case 'L': return [[-1, 1 - r, c - 1], [-1, 0, 0]]; case 'B': return [[1 - c, 1 - r, -1], [0, 0, -1]];
+    }
+  }
+  const z2 = (v) => fix0([-v[0], -v[1], v[2]]);
+  function fromNative(facelets) {
+    const st = new Array(54);
+    'URFDLB'.split('').forEach((f, fi) => { for (let k = 0; k < 9; k++) { const [p, n] = nativeFaceletPos(f, k); st[sIdx(z2(p), z2(n))] = NATIVE[facelets[fi * 9 + k]]; } });
+    return st;
+  }
+  const nativeMove = (m) => ({ f: NATIVE[m[0]], d: m.endsWith("'") ? -1 : 1 });
+  const nativeAlg = (alg) => splitAlg(alg).map((t) => NATIVE[t[0]] + t.slice(1)).join(' ');
+
+  const SUFFIX = '-b5a3-f393-e0a9-e50e24dcca9e', SERVICE = '6e400001' + SUFFIX;
+  const AXIS_PERM = [5, 2, 0, 3, 1, 4], FACE_PERM = [0, 1, 2, 5, 8, 7, 6, 3], FACE_OFFSET = [0, 0, 6, 2, 0, 0];
+  class SmartCube {
+    constructor(h) { this.h = h; this.device = null; this.w = null; }
+    get connected() { return !!(this.device && this.device.gatt.connected); }
+    async connect() {
+      if (!navigator.bluetooth) throw new Error('nobt');
+      this.device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Rubiks' }, { namePrefix: 'GoCube' }], optionalServices: [SERVICE] });
+      this.device.addEventListener('gattserverdisconnected', () => this.h.disconnected && this.h.disconnected());
+      const svc = await (await this.device.gatt.connect()).getPrimaryService(SERVICE);
+      this.w = await svc.getCharacteristic('6e400002' + SUFFIX);
+      const r = await svc.getCharacteristic('6e400003' + SUFFIX);
+      await r.startNotifications();
+      r.addEventListener('characteristicvaluechanged', (e) => this.parse(e.target.value));
+      this.h.connected && this.h.connected(this.device.name);
+      await this.send(0x33); setTimeout(() => this.send(0x32).catch(() => {}), 800);
+    }
+    disconnect() { if (this.connected) this.device.gatt.disconnect(); }
+    async send(c) { if (this.w) await this.w.writeValue(new Uint8Array([c]).buffer); }
+    parse(v) {
+      if (v.byteLength < 4 || v.getUint8(0) !== 0x2a || v.getUint8(v.byteLength - 2) !== 0x0d || v.getUint8(v.byteLength - 1) !== 0x0a) return;
+      const type = v.getUint8(2), len = v.byteLength - 6;
+      if (type === 1) for (let i = 0; i < len; i += 2) { const b = v.getUint8(3 + i); this.h.move && this.h.move('URFDLB'[AXIS_PERM[b >> 1]] + (b & 1 ? "'" : '')); }
+      else if (type === 2) {
+        const f = [];
+        for (let a = 0; a < 6; a++) { const ax = AXIS_PERM[a] * 9; f[ax + 4] = 'BFUDRL'[v.getUint8(3 + a * 9)]; for (let i = 0; i < 8; i++) f[ax + FACE_PERM[(i + FACE_OFFSET[a]) % 8]] = 'BFUDRL'[v.getUint8(3 + a * 9 + i + 1)]; }
+        this.h.state && this.h.state(f.join(''));
+      } else if (type === 5) this.h.battery && this.h.battery(v.getUint8(3));
+    }
+  }
+
+  G.LIVE = {
+    FACES, NORMALS, STICKERS, RING, NAME, sIdx, solved, turn, isSolved, applyAlg, convert, applyChunks, Tracker, plan, METHODS, validate,
+    fromNative, nativeMove, nativeAlg, SmartCube, posSt, POS,
+    init(data, items) { DATA = data; ITEMS = items; },
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+// ===== Cube engine (shared by tests and app) =====
+const AX = { x: 0, y: 1, z: 2 };
+const MOVES = {
+  R: ['x', c => c === 1, -1], L: ['x', c => c === -1, 1], M: ['x', c => c === 0, 1],
+  r: ['x', c => c >= 0, -1], l: ['x', c => c <= 0, 1], x: ['x', () => true, -1],
+  U: ['y', c => c === 1, -1], D: ['y', c => c === -1, 1], E: ['y', c => c === 0, 1],
+  u: ['y', c => c >= 0, -1], d: ['y', c => c <= 0, 1], y: ['y', () => true, -1],
+  F: ['z', c => c === 1, -1], B: ['z', c => c === -1, 1], S: ['z', c => c === 0, -1],
+  f: ['z', c => c >= 0, -1], b: ['z', c => c <= 0, 1], z: ['z', () => true, -1],
+};
+function parseMove(tok) {
+  const m = tok.match(/^([URFDLBMESxyzurfdlb])(w?)(2?)('?)(2?)$/);
+  if (!m) throw new Error('Bad move ' + tok);
+  let f = m[1];
+  if (m[2]) f = f.toLowerCase();
+  const [axis, layer, sign] = MOVES[f];
+  const dbl = m[3] || m[5];
+  const prime = !!m[4];
+  const q = sign * (dbl ? 2 : 1) * (prime ? -1 : 1);
+  return { tok, axis, layer, q };
+}
+function parseAlg(s) {
+  return s.replace(/[()]/g, ' ').trim().split(/\s+/).filter(Boolean).map(parseMove);
+}
+function invertTok(t) {
+  if (t.endsWith("2'")) return t.slice(0, -1);
+  if (t.endsWith('2')) return t + "'";
+  if (t.endsWith("'")) return t.slice(0, -1);
+  return t + "'";
+}
+function invertAlg(s) {
+  return s.replace(/[()]/g, ' ').trim().split(/\s+/).filter(Boolean).reverse().map(invertTok).join(' ');
+}
+function rotMat(axis, q) {
+  const a = ((q % 4) + 4) % 4;
+  const c = [1, 0, -1, 0][a], s = [0, 1, 0, -1][a];
+  if (axis === 'x') return [1, 0, 0, 0, c, -s, 0, s, c];
+  if (axis === 'y') return [c, 0, s, 0, 1, 0, -s, 0, c];
+  return [c, -s, 0, s, c, 0, 0, 0, 1];
+}
+function mulMV(m, v) {
+  return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]];
+}
+function mulMM(a, b) {
+  const r = new Array(9);
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+    r[i * 3 + j] = a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j];
+  }
+  return r;
+}
+const ID = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+function newCube() {
+  const cs = [];
+  for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+    if (x === 0 && y === 0 && z === 0) continue;
+    cs.push({ home: [x, y, z], pos: [x, y, z], rot: ID.slice() });
+  }
+  return cs;
+}
+function cloneCube(c) { return c.map(p => ({ home: p.home, pos: p.pos.slice(), rot: p.rot.slice() })); }
+function applyMove(cube, mv) {
+  const m = rotMat(mv.axis, mv.q), i = AX[mv.axis];
+  for (const p of cube) if (mv.layer(p.pos[i])) { p.pos = mulMV(m, p.pos); p.rot = mulMM(m, p.rot); }
+}
+function applyAlg(cube, s) { for (const mv of parseAlg(s)) applyMove(cube, mv); return cube; }
+const FACE_N = { U: [0, 1, 0], D: [0, -1, 0], R: [1, 0, 0], L: [-1, 0, 0], F: [0, 0, 1], B: [0, 0, -1] };
+function faceOfNormal(n) {
+  for (const k in FACE_N) { const v = FACE_N[k]; if (v[0] === n[0] && v[1] === n[1] && v[2] === n[2]) return k; }
+}
+// which original face color sits at world position p facing world normal N
+function stickerAt(cube, p, N) {
+  for (const c of cube) {
+    if (c.pos[0] === p[0] && c.pos[1] === p[1] && c.pos[2] === p[2]) {
+      for (const k in FACE_N) {
+        const w = mulMV(c.rot, FACE_N[k]);
+        if (w[0] === N[0] && w[1] === N[1] && w[2] === N[2]) return { face: k, cubie: c };
+      }
+    }
+  }
+  return null;
+}
+// rotate whole cube so centers are home (for algs that end with a rotation)
+function normalize(cube) {
+  const rots = ['', 'x', 'x2', "x'", 'y', 'y2', "y'", 'z', "z'"];
+  const cands = [];
+  for (const a of rots) for (const b of ['', 'y', 'y2', "y'"]) cands.push((a + ' ' + b).trim());
+  for (const r of cands) {
+    const c = cloneCube(cube); if (r) applyAlg(c, r);
+    const ok = c.filter(p => Math.abs(p.home[0]) + Math.abs(p.home[1]) + Math.abs(p.home[2]) === 1)
+      .every(p => p.pos.join() === p.home.join());
+    if (ok) return c;
+  }
+  throw new Error('normalize failed');
+}
+const isHome = p => p.pos.join() === p.home.join() && (Math.abs(p.home[0]) + Math.abs(p.home[1]) + Math.abs(p.home[2]) === 1 || p.rot.join() === ID.join());
+
+const DATA = {"beg":[{"title":"1 · Croix blanche","desc":"Place les 4 arêtes blanches autour du centre blanc (en bas), en alignant leur 2e couleur avec le centre de la face. Ici : l'arête blanc-vert va en DF.","items":[{"id":"b1-1","name":"Blanc vers le haut","alg":"F2","alts":[],"note":"L'arête est au-dessus de sa face : un demi-tour suffit.","mask":"cross"},{"id":"b1-2","name":"Blanc vers l’avant","alg":"U' R' F R","alts":[],"note":"Arête en haut, blanc tourné vers toi.","mask":"cross"},{"id":"b1-3","name":"Dans la tranche, à droite","alg":"F","alts":[],"note":"Arête entre F et R, blanc à droite.","mask":"cross"},{"id":"b1-4","name":"Dans la tranche, à gauche","alg":"F'","alts":[],"note":"Arête entre F et L, blanc à gauche.","mask":"cross"},{"id":"b1-5","name":"En bas mais retournée","alg":"F' D R' D'","alts":[],"note":"Arête en place, couleurs inversées.","mask":"cross"}]},{"title":"2 · Coins blancs","desc":"Place le coin blanc au-dessus de son emplacement (ici devant-droite), puis insère-le. Astuce : R U R′ U′ répété finit toujours par le placer.","items":[{"id":"b2-1","name":"Blanc à droite","alg":"R U R'","alts":[],"note":"","mask":"dlayer"},{"id":"b2-2","name":"Blanc devant","alg":"F' U' F","alts":[],"note":"","mask":"dlayer"},{"id":"b2-3","name":"Blanc vers le haut","alg":"R U2 R' U' R U R'","alts":[],"note":"On le retourne puis on l’insère.","mask":"dlayer"},{"id":"b2-4","name":"Coin en bas, blanc à droite","alg":"R U R' U' R U R'","alts":[],"note":"Coin coincé dans son emplacement.","mask":"dlayer"},{"id":"b2-5","name":"Coin en bas, blanc devant","alg":"R U' R' U R U' R'","alts":[],"note":"","mask":"dlayer"},{"id":"b2-6","name":"Le « sexy move »","alg":"R U R' U'","alts":[],"note":"Le mouvement de base à répéter.","mask":"dlayer"}]},{"title":"3 · Deuxième couronne","desc":"Trouve une arête sans jaune en haut, aligne-la avec son centre, puis envoie-la à droite ou à gauche.","items":[{"id":"b3-1","name":"Vers la droite","alg":"U R U' R' U' F' U F","alts":[],"note":"Arête devant, à envoyer en FR.","mask":"layer2"},{"id":"b3-2","name":"Vers la gauche","alg":"U' L' U L U F U' F'","alts":[],"note":"Arête devant, à envoyer en FL.","mask":"layer2"},{"id":"b3-3","name":"Arête retournée en place","alg":"U R U' R' U' F' U F U2 U R U' R' U' F' U F","alts":[],"note":"On la sort puis on la remet dans le bon sens.","mask":"layer2"}]},{"title":"4 · Croix jaune","desc":"Ne regarde que le jaune sur la face du haut. Tiens le cube comme montré.","items":[{"id":"b4-1","name":"Ligne → croix","alg":"F R U R' U' F'","alts":[],"note":"Ligne horizontale devant toi.","mask":"oll"},{"id":"b4-2","name":"L → croix","alg":"f R U R' U' f'","alts":[],"note":"Le L pointe vers l’arrière-gauche.","mask":"oll"},{"id":"b4-3","name":"Point → croix","alg":"F R U R' U' F' f R U R' U' f'","alts":[],"note":"Aucune arête jaune en haut.","mask":"oll"}]},{"title":"5 · Face jaune","desc":"Oriente les coins jaunes. Repère le « poisson ».","items":[{"id":"b5-1","name":"Sune","alg":"R U R' U R U2 R'","alts":[],"note":"Un coin jaune en haut, devant-gauche.","mask":"oll"},{"id":"b5-2","name":"Anti-Sune","alg":"R U2 R' U' R U' R'","alts":[],"note":"Un coin jaune en haut, derrière-droite.","mask":"oll"}]},{"title":"6 · Placer les coins","desc":"Garde le coin bien placé derrière à gauche puis fais tourner les 3 autres.","items":[{"id":"b6-1","name":"Cycle de coins","alg":"R' F R' B2 R F' R' B2 R2","alts":[],"note":"Perm A : 3 coins tournent.","mask":"pll"}]},{"title":"7 · Placer les arêtes","desc":"Dernière étape : la face pleine (si tu en as une) se met derrière.","items":[{"id":"b7-1","name":"Arêtes sens horaire","alg":"R2 U R U R' U' R' U' R' U R'","alts":[],"note":"Perm Ub.","mask":"pll"},{"id":"b7-2","name":"Arêtes sens anti-horaire","alg":"R U' R U R U R U' R' U' R2","alts":[],"note":"Perm Ua.","mask":"pll"}]}],"f2l":[{"title":"Coin et arête en haut · blanc vers le haut","desc":"Le blanc du coin regarde le plafond : il faut d’abord séparer puis reformer la paire.","items":[{"id":"f1","name":"F2L 1","alg":"R U2 R' U' R U R'","alts":["U2 R U R' U' R U R' U2 R U' R'","U2 R U' R' U' R U2 R' U' R U R'"],"note":"Coin : blanc en haut","mask":"f2l","star":false},{"id":"f2","name":"F2L 2","alg":"F' U2 F U F' U' F","alts":[],"note":"Coin : blanc en haut","mask":"f2l","star":false},{"id":"f3","name":"F2L 3","alg":"U R U2 R' U R U' R'","alts":["R U' R' U R U' R' U R U R'"],"note":"Coin : blanc en haut","mask":"f2l","star":false},{"id":"f4","name":"F2L 4","alg":"U' F' U2 F U' F' U F","alts":[],"note":"Coin : blanc en haut","mask":"f2l","star":false},{"id":"f5","name":"F2L 5","alg":"U2 R U R' U R U' R'","alts":["R U' R' U2 R U R'","U' R U R' U2 R U2 R' U R U' R'"],"note":"Coin : blanc en haut","mask":"f2l","star":false},{"id":"f6","name":"F2L 6","alg":"U2 F' U' F U' F' U F","alts":["F' U F U2 F' U' F"],"note":"Coin : blanc en haut","mask":"f2l","star":false},{"id":"f7","name":"F2L 7","alg":"U2 R2 U2 R' U' R U' R2","alts":["U R U' R' U' R U' R' U R U' R'","R U R' U2 R U R' U' R U R'"],"note":"Coin : blanc en haut","mask":"f2l","star":false},{"id":"f8","name":"F2L 8","alg":"F U R U' R' F' R U' R'","alts":["U R U2 R' U' R U' R' U F' U' F"],"note":"Coin : blanc en haut","mask":"f2l","star":false}]},{"title":"Coin et arête en haut · blanc sur le côté","desc":"Les cas les plus fréquents. Les deux premiers sont les insertions de base.","items":[{"id":"f9","name":"F2L 9","alg":"F' U' F","alts":[],"note":"Coin : blanc devant","mask":"f2l","star":true},{"id":"f10","name":"F2L 10","alg":"R U R'","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":true},{"id":"f11","name":"F2L 11","alg":"U R U' R'","alts":["U R U' R' F R' F' R U R U' R'"],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f12","name":"F2L 12","alg":"U' F' U F","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f13","name":"F2L 13","alg":"R U' R' U2 F' U' F","alts":["U F U R U' R' F' R U R'"],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f14","name":"F2L 14","alg":"F' U F U2 R U R'","alts":[],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f15","name":"F2L 15","alg":"U' R U R' U2 R U' R'","alts":[],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f16","name":"F2L 16","alg":"U F' U' F U2 F' U F","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f17","name":"F2L 17","alg":"U' R U2 R' U2 R U' R'","alts":["U2 R U' R' U2 R U R' U2 R U' R'"],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f18","name":"F2L 18","alg":"U F' U2 F U2 F' U F","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f19","name":"F2L 19","alg":"U' R U' R' U F' U' F","alts":["U2 F' U F U F' U' F","F R U R' U' F' R U' R'"],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f20","name":"F2L 20","alg":"U' R U R' U R U R'","alts":["U2 R U' R' U' R U R'","U F' U F U' R U R'"],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f21","name":"F2L 21","alg":"U' R U2 R' U F' U' F","alts":[],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f22","name":"F2L 22","alg":"U F' U F U' F' U' F","alts":[],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f23","name":"F2L 23","alg":"U' R U' R' U R U R'","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f24","name":"F2L 24","alg":"R U' R' U R U' R' U2 R U' R'","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":false}]},{"title":"Coin en haut · arête dans l’emplacement","desc":"L’arête est déjà dans la tranche du milieu.","items":[{"id":"f25","name":"F2L 25","alg":"U' R' F R F' R U' R'","alts":[],"note":"Coin : blanc en haut","mask":"f2l","star":false},{"id":"f26","name":"F2L 26","alg":"U' R U' R' U2 R U' R'","alts":[],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f27","name":"F2L 27","alg":"U R U R' U2 R U R'","alts":["U F' U F U2 F' U F"],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f28","name":"F2L 28","alg":"U' R U R' U F' U' F","alts":[],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f29","name":"F2L 29","alg":"U F' U' F U' R U R'","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f30","name":"F2L 30","alg":"R U R' U' R U R' U' R U R'","alts":["U R U' R' U R U' R' U R U' R'"],"note":"Coin : blanc en haut","mask":"f2l","star":false}]},{"title":"Coin en bas · arête en haut","desc":"Le coin est déjà dans son emplacement (bien ou mal orienté).","items":[{"id":"f31","name":"F2L 31","alg":"R U' R' U R U' R'","alts":["U' F U R U' R' F' R U' R' U R U' R'","U' R U' R' U' R U2 R' U2 R U' R'"],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f32","name":"F2L 32","alg":"F' U F U' F' U F","alts":["R U R' U' F R' F' R"],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f33","name":"F2L 33","alg":"R U R' U' R U R'","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f34","name":"F2L 34","alg":"U' R' F R F' R U R'","alts":["U' F' U F U R U' R'"],"note":"Coin : blanc en bas","mask":"f2l","star":false},{"id":"f35","name":"F2L 35","alg":"U R U' R' F R' F' R","alts":["U R U' R' U' F' U F"],"note":"Coin : blanc en bas","mask":"f2l","star":false},{"id":"f36","name":"F2L 36","alg":"R' F R F' U R U' R'","alts":["F' U' F U F' U' F"],"note":"Coin : blanc devant","mask":"f2l","star":false}]},{"title":"Coin et arête dans l’emplacement","desc":"Les deux pièces sont coincées dans l’emplacement, mal orientées.","items":[{"id":"f37","name":"F2L 37","alg":"R2 U2 F R2 F' U2 R' U R'","alts":["R U' R' U F' U2 F U2 F' U F","R' F R F' R U' R' U R U' R' U2 R U' R'"],"note":"Coin : blanc en bas","mask":"f2l","star":false},{"id":"f38","name":"F2L 38","alg":"R U' R' U' R U R' U2 R U' R'","alts":["R U' R' U' R U R' U' R U2 R'","R U R' U' R U2 R' U' R U R'"],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f39","name":"F2L 39","alg":"R U' R' U R U2 R' U R U' R'","alts":["R U R' U2 R U' R' U R U R'","R U2 R U R' U R U2 R2"],"note":"Coin : blanc à droite","mask":"f2l","star":false},{"id":"f40","name":"F2L 40","alg":"R U' R' U F' U' F U' F' U' F","alts":["R U' R' F R U R' U' F' R U' R'"],"note":"Coin : blanc devant","mask":"f2l","star":false},{"id":"f41","name":"F2L 41","alg":"R U R' U' R U' R' U2 F' U' F","alts":[],"note":"Coin : blanc à droite","mask":"f2l","star":false}]}],"oll":[{"title":"Croix déjà faite (OCLL)","desc":"Les arêtes sont orientées : il ne reste que les coins. Ce sont aussi les algos du 2-look OLL.","items":[{"id":"o21","name":"OLL 21","alg":"R U2 R' U' R U R' U' R U' R'","alts":[],"note":"2-look","mask":"oll","star":true},{"id":"o22","name":"OLL 22","alg":"R U2 R2 U' R2 U' R2 U2 R","alts":[],"note":"2-look","mask":"oll","star":true},{"id":"o23","name":"OLL 23","alg":"R2 D' R U2 R' D R U2 R","alts":[],"note":"2-look","mask":"oll","star":true},{"id":"o24","name":"OLL 24","alg":"r U R' U' r' F R F'","alts":[],"note":"2-look","mask":"oll","star":true},{"id":"o25","name":"OLL 25","alg":"F' r U R' U' r' F R","alts":[],"note":"2-look","mask":"oll","star":true},{"id":"o26","name":"OLL 26","alg":"R U2 R' U' R U' R'","alts":[],"note":"2-look","mask":"oll","star":true},{"id":"o27","name":"OLL 27","alg":"R U R' U R U2 R'","alts":[],"note":"2-look","mask":"oll","star":true}]},{"title":"Forme en L","desc":"Deux arêtes jaunes adjacentes.","items":[{"id":"o5","name":"OLL 5","alg":"r' U2 R U R' U r","alts":[],"note":"","mask":"oll","star":false},{"id":"o6","name":"OLL 6","alg":"r U2 R' U' R U' r'","alts":[],"note":"","mask":"oll","star":false},{"id":"o7","name":"OLL 7","alg":"r U R' U R U2 r'","alts":[],"note":"","mask":"oll","star":false},{"id":"o8","name":"OLL 8","alg":"l' U' L U' L' U2 l","alts":[],"note":"","mask":"oll","star":false},{"id":"o9","name":"OLL 9","alg":"R U R' U' R' F R2 U R' U' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o10","name":"OLL 10","alg":"R U R' U R' F R F' R U2 R'","alts":[],"note":"","mask":"oll","star":false},{"id":"o11","name":"OLL 11","alg":"r U R' U R' F R F' R U2 r'","alts":[],"note":"","mask":"oll","star":false},{"id":"o12","name":"OLL 12","alg":"M' R' U' R U' R' U2 R U' R r'","alts":[],"note":"","mask":"oll","star":false},{"id":"o28","name":"OLL 28","alg":"r U R' U' M U R U' R'","alts":[],"note":"","mask":"oll","star":false},{"id":"o29","name":"OLL 29","alg":"R U R' U' R U' R' F' U' F R U R'","alts":[],"note":"","mask":"oll","star":false},{"id":"o30","name":"OLL 30","alg":"F R' F R2 U' R' U' R U R' F2","alts":[],"note":"","mask":"oll","star":false},{"id":"o31","name":"OLL 31","alg":"R' U' F U R U' R' F' R","alts":[],"note":"","mask":"oll","star":false},{"id":"o32","name":"OLL 32","alg":"L U F' U' L' U L F L'","alts":[],"note":"","mask":"oll","star":false},{"id":"o35","name":"OLL 35","alg":"R U2 R2 F R F' R U2 R'","alts":[],"note":"","mask":"oll","star":false},{"id":"o36","name":"OLL 36","alg":"L' U' L U' L' U L U L F' L' F","alts":[],"note":"","mask":"oll","star":false},{"id":"o37","name":"OLL 37","alg":"F R' F' R U R U' R'","alts":[],"note":"","mask":"oll","star":false},{"id":"o38","name":"OLL 38","alg":"R U R' U R U' R' U' R' F R F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o41","name":"OLL 41","alg":"R U R' U R U2 R' F R U R' U' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o42","name":"OLL 42","alg":"R' U' R U' R' U2 R F R U R' U' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o43","name":"OLL 43","alg":"F' U' L' U L F","alts":[],"note":"","mask":"oll","star":false},{"id":"o44","name":"OLL 44","alg":"F U R U' R' F'","alts":[],"note":"2-look","mask":"oll","star":true},{"id":"o47","name":"OLL 47","alg":"R' U' R' F R F' R' F R F' U R","alts":[],"note":"","mask":"oll","star":false},{"id":"o48","name":"OLL 48","alg":"F R U R' U' R U R' U' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o49","name":"OLL 49","alg":"r U' r2 U r2 U r2 U' r","alts":[],"note":"","mask":"oll","star":false},{"id":"o50","name":"OLL 50","alg":"r' U r2 U' r2 U' r2 U r'","alts":[],"note":"","mask":"oll","star":false},{"id":"o53","name":"OLL 53","alg":"l' U2 L U L' U' L U L' U l","alts":[],"note":"","mask":"oll","star":false},{"id":"o54","name":"OLL 54","alg":"r U2 R' U' R U R' U' R U' r'","alts":[],"note":"","mask":"oll","star":false}]},{"title":"Forme en ligne","desc":"Deux arêtes jaunes opposées.","items":[{"id":"o13","name":"OLL 13","alg":"F U R U' R2 F' R U R U' R'","alts":[],"note":"","mask":"oll","star":false},{"id":"o14","name":"OLL 14","alg":"R' F R U R' F' R F U' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o15","name":"OLL 15","alg":"l' U' l L' U' L U l' U l","alts":[],"note":"","mask":"oll","star":false},{"id":"o16","name":"OLL 16","alg":"r U r' R U R' U' r U' r'","alts":[],"note":"","mask":"oll","star":false},{"id":"o33","name":"OLL 33","alg":"R U R' U' R' F R F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o34","name":"OLL 34","alg":"R U R2 U' R' F R U R U' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o39","name":"OLL 39","alg":"L F' L' U' L U F U' L'","alts":[],"note":"","mask":"oll","star":false},{"id":"o40","name":"OLL 40","alg":"R' F R U R' U' F' U R","alts":[],"note":"","mask":"oll","star":false},{"id":"o45","name":"OLL 45","alg":"F R U R' U' F'","alts":[],"note":"2-look","mask":"oll","star":true},{"id":"o46","name":"OLL 46","alg":"R' U' R' F R F' U R","alts":[],"note":"","mask":"oll","star":false},{"id":"o51","name":"OLL 51","alg":"F U R U' R' U R U' R' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o52","name":"OLL 52","alg":"R U R' U R U' B U' B' R'","alts":[],"note":"","mask":"oll","star":false},{"id":"o55","name":"OLL 55","alg":"R' F R U R U' R2 F' R2 U' R' U R U R'","alts":[],"note":"","mask":"oll","star":false},{"id":"o56","name":"OLL 56","alg":"r' U' r U' R' U R U' R' U R r' U r","alts":[],"note":"","mask":"oll","star":false},{"id":"o57","name":"OLL 57","alg":"R U R' U' M' U R U' r'","alts":[],"note":"","mask":"oll","star":false}]},{"title":"Point","desc":"Aucune arête jaune en haut.","items":[{"id":"o1","name":"OLL 1","alg":"R U2 R2 F R F' U2 R' F R F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o2","name":"OLL 2","alg":"F R U R' U' F' f R U R' U' f'","alts":[],"note":"","mask":"oll","star":false},{"id":"o3","name":"OLL 3","alg":"f R U R' U' f' U' F R U R' U' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o4","name":"OLL 4","alg":"f R U R' U' f' U F R U R' U' F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o17","name":"OLL 17","alg":"F R' F' R2 r' U R U' R' U' M'","alts":[],"note":"","mask":"oll","star":false},{"id":"o18","name":"OLL 18","alg":"r U R' U R U2 r2 U' R U' R' U2 r","alts":[],"note":"","mask":"oll","star":false},{"id":"o19","name":"OLL 19","alg":"r' R U R U R' U' M' R' F R F'","alts":[],"note":"","mask":"oll","star":false},{"id":"o20","name":"OLL 20","alg":"r U R' U' M2 U R U' R' U' M'","alts":[],"note":"","mask":"oll","star":false}]}],"pll":[{"title":"Arêtes seulement","desc":"Les coins sont déjà bien placés.","items":[{"id":"pUa","name":"Ua-perm","alg":"M2 U M U2 M' U M2","alts":["R U' R U R U R U' R' U' R2"],"note":"2-look","mask":"pll","star":true},{"id":"pUb","name":"Ub-perm","alg":"M2 U' M U2 M' U' M2","alts":["R2 U R U R' U' R' U' R' U R'"],"note":"2-look","mask":"pll","star":true},{"id":"pH","name":"H-perm","alg":"M2 U M2 U2 M2 U M2","alts":[],"note":"2-look","mask":"pll","star":true},{"id":"pZ","name":"Z-perm","alg":"M' U M2 U M2 U M' U2 M2","alts":[],"note":"2-look","mask":"pll","star":true}]},{"title":"Coins seulement","desc":"Les arêtes sont déjà bien placées.","items":[{"id":"pAa","name":"Aa-perm","alg":"x R' U R' D2 R U' R' D2 R2 x'","alts":["R' F R' B2 R F' R' B2 R2"],"note":"","mask":"pll","star":false},{"id":"pAb","name":"Ab-perm","alg":"x R2 D2 R U R' D2 R U' R x'","alts":[],"note":"","mask":"pll","star":false},{"id":"pE","name":"E-perm","alg":"x' R U' R' D R U R' D' R U R' D R U' R' D' x","alts":[],"note":"","mask":"pll","star":false}]},{"title":"Échange de coins adjacents","desc":"Une paire de « phares » (deux coins de même couleur) est visible.","items":[{"id":"pT","name":"T-perm","alg":"R U R' U' R' F R2 U' R' U' R U R' F'","alts":[],"note":"2-look","mask":"pll","star":true},{"id":"pF","name":"F-perm","alg":"R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R","alts":[],"note":"","mask":"pll","star":false},{"id":"pJa","name":"Ja-perm","alg":"x R2 F R F' R U2 r' U r U2 x'","alts":[],"note":"","mask":"pll","star":false},{"id":"pJb","name":"Jb-perm","alg":"R U R' F' R U R' U' R' F R2 U' R'","alts":[],"note":"","mask":"pll","star":false},{"id":"pRa","name":"Ra-perm","alg":"R U' R' U' R U R D R' U' R D' R' U2 R'","alts":[],"note":"","mask":"pll","star":false},{"id":"pRb","name":"Rb-perm","alg":"R2 F R U R U' R' F' R U2 R' U2 R","alts":[],"note":"","mask":"pll","star":false}]},{"title":"Échange de coins en diagonale","desc":"Aucun phare : les coins s’échangent en diagonale.","items":[{"id":"pV","name":"V-perm","alg":"R' U R' U' R D' R' D R' U D' R2 U' R2 D R2","alts":["U R U' R U R' D R D' R U' D R2 U R2 D' R2 U'"],"note":"","mask":"pll","star":false},{"id":"pY","name":"Y-perm","alg":"F R U' R' U' R U R' F' R U R' U' R' F R F'","alts":[],"note":"2-look","mask":"pll","star":true},{"id":"pNa","name":"Na-perm","alg":"R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'","alts":[],"note":"","mask":"pll","star":false},{"id":"pNb","name":"Nb-perm","alg":"R' U R U' R' F' U' F R U R' F R' F' R U' R","alts":[],"note":"","mask":"pll","star":false}]},{"title":"G-perms","desc":"Coins et arêtes tournent en même temps.","items":[{"id":"pGa","name":"Ga-perm","alg":"R2 U R' U R' U' R U' R2 U' D R' U R D'","alts":[],"note":"","mask":"pll","star":false},{"id":"pGb","name":"Gb-perm","alg":"R' U' R U D' R2 U R' U R U' R U' R2 D","alts":[],"note":"","mask":"pll","star":false},{"id":"pGc","name":"Gc-perm","alg":"R2 U' R U' R U R' U R2 U D' R U' R' D","alts":[],"note":"","mask":"pll","star":false},{"id":"pGd","name":"Gd-perm","alg":"R U R' U' D R2 U' R U' R' U R' U R2 D'","alts":[],"note":"","mask":"pll","star":false}]}],"not":[{"title":"Faces","desc":"Une lettre = un quart de tour horaire de la face (vue de face). ′ = sens inverse, 2 = demi-tour.","items":[{"id":"n0-0","name":"R","alg":"R","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n0-1","name":"R'","alg":"R'","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n0-2","name":"R2","alg":"R2","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n0-3","name":"L","alg":"L","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n0-4","name":"U","alg":"U","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n0-5","name":"U'","alg":"U'","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n0-6","name":"D","alg":"D","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n0-7","name":"F","alg":"F","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n0-8","name":"B","alg":"B","alts":[],"note":"","mask":"all","fromSolved":true}]},{"title":"Tranches du milieu","desc":"M suit L, E suit D, S suit F.","items":[{"id":"n1-0","name":"M","alg":"M","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n1-1","name":"M'","alg":"M'","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n1-2","name":"E","alg":"E","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n1-3","name":"S","alg":"S","alts":[],"note":"","mask":"all","fromSolved":true}]},{"title":"Doubles couches","desc":"Minuscule (ou w) = la face + la tranche du milieu.","items":[{"id":"n2-0","name":"r","alg":"r","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n2-1","name":"l","alg":"l","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n2-2","name":"u","alg":"u","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n2-3","name":"f","alg":"f","alts":[],"note":"","mask":"all","fromSolved":true}]},{"title":"Rotations du cube","desc":"Tout le cube tourne : x comme R, y comme U, z comme F.","items":[{"id":"n3-0","name":"x","alg":"x","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n3-1","name":"y","alg":"y","alts":[],"note":"","mask":"all","fromSolved":true},{"id":"n3-2","name":"z","alg":"z","alts":[],"note":"","mask":"all","fromSolved":true}]}]};
+
+// ================= PALETTE =================
+const COL = { U:[255,208,0], D:[246,246,240], F:[0,200,83], B:[36,108,255], R:[255,138,0], L:[255,45,60], X:[92,90,122] };
+const BODY = [16,14,26];
+const LEV = [0.6, 0.8, 1.0];
+const pack = (r,g,b) => ((255<<24)|(b<<16)|(g<<8)|r)>>>0;
+const SH = {};
+for (const k in COL) SH[k] = LEV.map(m => pack(...COL[k].map(v => Math.min(255, Math.round(v*m)))));
+SH.BODY = LEV.map(m => pack(...BODY.map(v => Math.round(v*(0.7+m*0.5)))));
+const DITH = LEV.map(m => pack(...[44,42,62].map(v => Math.round(v*m))));
+
+// ================= MATH =================
+function m3(a,b){const r=new Array(9);for(let i=0;i<3;i++)for(let j=0;j<3;j++)r[i*3+j]=a[i*3]*b[j]+a[i*3+1]*b[3+j]+a[i*3+2]*b[6+j];return r}
+function mv3(m,v){return [m[0]*v[0]+m[1]*v[1]+m[2]*v[2],m[3]*v[0]+m[4]*v[1]+m[5]*v[2],m[6]*v[0]+m[7]*v[1]+m[8]*v[2]]}
+function rotF(axis,th){const c=Math.cos(th),s=Math.sin(th);
+  if(axis==='x')return[1,0,0,0,c,-s,0,s,c];if(axis==='y')return[c,0,s,0,1,0,-s,0,c];return[c,-s,0,s,c,0,0,0,1]}
+const FACES = [ // key, normal, u, v
+  ['R',[1,0,0],[0,1,0],[0,0,1]],['L',[-1,0,0],[0,1,0],[0,0,1]],
+  ['U',[0,1,0],[1,0,0],[0,0,1]],['D',[0,-1,0],[1,0,0],[0,0,1]],
+  ['F',[0,0,1],[1,0,0],[0,1,0]],['B',[0,0,-1],[1,0,0],[0,1,0]]];
+const LIGHT = (()=>{const v=[-0.45,0.8,0.55];const l=Math.hypot(...v);return v.map(x=>x/l)})();
+
+// ================= PIXEL RENDERER =================
+class Pix {
+  constructor(size){this.cv=document.createElement('canvas');this.resize(size)}
+  resize(size){this.W=size;this.cv.width=this.cv.height=size;this.ctx=this.cv.getContext('2d');
+    this.img=this.ctx.createImageData(size,size);this.buf=new Uint32Array(this.img.data.buffer)}
+  quad(P,col,alt){
+    const W=this.W,buf=this.buf;
+    let minx=W,maxx=0,miny=W,maxy=0;
+    for(const p of P){if(p[0]<minx)minx=p[0];if(p[0]>maxx)maxx=p[0];if(p[1]<miny)miny=p[1];if(p[1]>maxy)maxy=p[1]}
+    minx=Math.max(0,Math.floor(minx));maxx=Math.min(W-1,Math.ceil(maxx));miny=Math.max(0,Math.floor(miny));maxy=Math.min(W-1,Math.ceil(maxy));
+    let area=0;for(let i=0;i<4;i++){const a=P[i],b=P[(i+1)%4];area+=a[0]*b[1]-b[0]*a[1]}
+    const sg=area>0?1:-1;
+    for(let y=miny;y<=maxy;y++){const py=y+.5;
+      for(let x=minx;x<=maxx;x++){const px=x+.5;let ok=true;
+        for(let i=0;i<4;i++){const a=P[i],b=P[(i+1)%4];
+          if(sg*((b[0]-a[0])*(py-a[1])-(b[1]-a[1])*(px-a[0]))<0){ok=false;break}}
+        if(ok)buf[y*W+x]=(alt!==undefined&&((x+y)&1))?alt:col}}
+  }
+  draw(cube,o){
+    this.buf.fill(0);
+    const W=this.W,S=W*(o.scale||0.142),Dd=o.persp===false?1e9:11,cy=W*(o.cy||0.5);
+    const V=m3(rotF('x',o.pitch*Math.PI/180),rotF('y',o.yaw*Math.PI/180));
+    let VA=V,isMov=()=>false;
+    if(o.anim){const i={x:0,y:1,z:2}[o.anim.axis];VA=m3(V,rotF(o.anim.axis,o.anim.angle));isMov=p=>o.anim.layer(p.pos[i])}
+    const groups=[{T:V,list:[]},{T:VA,list:[]}];
+    for(const p of cube)groups[isMov(p)?1:0].list.push(p);
+    for(const g of groups){let z=0;g.list.forEach(p=>{p._z=mv3(g.T,p.pos)[2];z+=p._z});g.z=g.list.length?z/g.list.length:0}
+    groups.sort((a,b)=>a.z-b.z);
+    const proj=v=>{const f=Dd/(Dd-v[2]);return[W/2+v[0]*S*f,cy-v[1]*S*f]};
+    for(const g of groups){
+      g.list.sort((a,b)=>a._z-b._z);
+      for(const p of g.list){
+        for(const [k,n,u,v] of FACES){
+          const wn=mv3(g.T,mv3(p.rot,n));if(wn[2]<=0.002)continue;
+          const d=wn[0]*LIGHT[0]+wn[1]*LIGHT[1]+wn[2]*LIGHT[2];const lv=d>0.78?2:d>0.42?1:0;
+          const ru=mv3(p.rot,u),rv=mv3(p.rot,v),rn=mv3(p.rot,n);
+          const c=[p.pos[0]+rn[0]*.5,p.pos[1]+rn[1]*.5,p.pos[2]+rn[2]*.5];
+          const corners=s=>[[-1,-1],[1,-1],[1,1],[-1,1]].map(([a,b])=>proj(mv3(g.T,[c[0]+(ru[0]*a+rv[0]*b)*s,c[1]+(ru[1]*a+rv[1]*b)*s,c[2]+(ru[2]*a+rv[2]*b)*s])));
+          this.quad(corners(.5),SH.BODY[lv]);
+          const ax=n[0]?0:n[1]?1:2;const sgn=n[ax];
+          if(p.home[ax]===sgn){
+            const sc=o.color(p,k);
+            this.quad(corners(.405),SH[sc.c][lv],sc.d?DITH[lv]:undefined);
+          }
+        }
+      }
+    }
+    return this.img;
+  }
+}
+function colorFn(mask,full){
+  return (p,f)=>{
+    const h=p.home,n=Math.abs(h[0])+Math.abs(h[1])+Math.abs(h[2]);
+    if(n===1)return{c:f,d:!full&&mask!=='all'};
+    if(full||mask==='all')return{c:f};
+    let on=false;const s=h.join();
+    switch(mask){
+      case'cross':on=h[1]===-1&&n===2;break;
+      case'dlayer':on=h[1]===-1;break;
+      case'f2l':on=s==='1,-1,1'||s==='1,0,1';break;
+      case'layer2':on=h[1]<=0;break;
+      case'oll':on=h[1]===1&&f==='U';break;
+      case'pll':on=h[1]===1;break;
+      case'pllc':on=h[1]===1&&(n===3||f==='U');break;
+    }
+    return{c:on?f:'X'};
+  }
+}
+
+// ================= TOP VIEW (OLL/PLL thumbs) =================
+function topView(cv,cube,mask){
+  const ctx=cv.getContext('2d');const W=cv.width;ctx.clearRect(0,0,W,W);
+  const cf=colorFn(mask,false);
+  const rgb=k=>`rgb(${COL[k].join(',')})`;
+  const get=(p,N)=>{const s=stickerAt(cube,p,N);const c=cf(s.cubie,s.face);return c.c};
+  ctx.fillStyle='#05040b';ctx.fillRect(4,4,32,32);
+  for(let r=0;r<3;r++)for(let q=0;q<3;q++){
+    const x=q-1,z=r-1;ctx.fillStyle=rgb(get([x,1,z],[0,1,0]));ctx.fillRect(5+q*10,5+r*10,9,9);
+    if(r===0){ctx.fillStyle=rgb(get([x,1,-1],[0,0,-1]));ctx.fillRect(5+q*10,0,9,3)}
+    if(r===2){ctx.fillStyle=rgb(get([x,1,1],[0,0,1]));ctx.fillRect(5+q*10,37,9,3)}
+    if(q===0){ctx.fillStyle=rgb(get([-1,1,z],[-1,0,0]));ctx.fillRect(0,5+r*10,3,9)}
+    if(q===2){ctx.fillStyle=rgb(get([1,1,z],[1,0,0]));ctx.fillRect(37,5+r*10,3,9)}
+  }
+}
+
+// ================= STATE =================
+const TABS=[
+  {k:'guide',label:'▶ GUIDÉ',sub:'pas à pas',info:'',view:[-35,26]},
+  {k:'live',label:'◉ MON CUBE',sub:'connecté',info:'',view:[-35,26]},
+  {k:'beg',label:'DÉBUTANT',sub:'7 étapes',info:'La méthode couche par couche : la plus simple pour finir son premier cube. Chaque étape montre seulement les pièces qui comptent.',view:[-35,26]},
+  {k:'f2l',label:'F2L',sub:'41 cas',info:'Paire coin + arête de la 2e couronne insérées en un seul algo, dans l’emplacement avant-droit. Seules les 2 pièces de la paire sont en couleur. Numérotation propre à l’app, cas triés du plus court au plus long.',view:[-35,24]},
+  {k:'oll',label:'OLL',sub:'57 cas',info:'Orienter la dernière face (tout le jaune en haut) en un algo. Seuls les autocollants jaunes sont colorés. Les cas ★ forment le 2-look OLL (9 algos).',view:[-30,52]},
+  {k:'pll',label:'PLL',sub:'21 cas',info:'Permuter la dernière couche pour finir le cube. La couche du haut est en couleur. Les cas ★ suffisent pour le 2-look PLL.',view:[-30,42]},
+  {k:'not',label:'NOTATION',sub:'les bases',info:'Comment lire un algo. Touche un mouvement pour le voir sur le cube.',view:[-35,26]},
+];
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let learned=new Set(LS.get('cubealgo-learned',[]));
+const ITEMS={};for(const t of TABS)if(DATA[t.k])for(const s of DATA[t.k])for(const it of s.items){it.cat=t.k;it.sec=s.title;ITEMS[it.id]=it}
+
+const V={tab:'f2l',item:null,alg:'',toks:[],moves:[],idx:0,cube:newCube(),anim:null,playing:false,
+  yaw:-35,pitch:24,full:false,loop:false,sound:false,speed:1.2,dirty:true,waitUntil:0};
+
+const cv=document.getElementById('cv');const R=new Pix(120);const mainCtx=cv.getContext('2d');
+function sizeCanvas(){
+  const box=cv.parentElement.getBoundingClientRect();const avail=Math.min(box.width-12,450);
+  const px=3;const n=Math.max(80,Math.floor(avail/px));
+  R.resize(n);cv.width=n;cv.height=n;cv.style.width=n*px+'px';cv.style.height=n*px+'px';V.dirty=true;
+}
+
+// ================= AUDIO =================
+let actx=null;
+function blip(f){if(!V.sound)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+  const o=actx.createOscillator(),g=actx.createGain();o.type='square';o.frequency.value=f;
+  g.gain.setValueAtTime(0.05,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.09);
+  o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+0.1)}catch(e){}}
+
+// ================= VIEWER =================
+function tokens(alg){return alg.replace(/[()]/g,' ').trim().split(/\s+/).filter(Boolean)}
+function startCube(){return V.item&&V.item.fromSolved?newCube():applyAlg(newCube(),invertAlg(V.alg))}
+function loadItem(it,alg){
+  V.item=it;V.alg=alg||it.alg;V.toks=tokens(V.alg);V.moves=V.toks.map(parseMove);
+  resetCube();
+  document.querySelectorAll('.card.sel').forEach(c=>c.classList.remove('sel'));
+  const c=document.querySelector(`.card[data-id="${it.id}"]`);if(c)c.classList.add('sel');
+  document.getElementById('vName').textContent=it.name;
+  document.getElementById('vSub').textContent=[it.sec,it.note].filter(Boolean).join(' · ');
+  const alts=document.getElementById('vAlts');alts.innerHTML='';
+  const all=[it.alg,...(it.alts||[])];
+  if(all.length>1)all.forEach((a,i)=>{const b=document.createElement('button');b.className='alt'+(a===V.alg?' on':'');
+    b.textContent=i===0?'ALGO PRINCIPAL':'ALTERNATIVE '+i;b.onclick=()=>{loadItem(it,a);if(!BT.connected)countdown(150)};alts.appendChild(b)});
+  updStar();renderAlg();
+}
+function resetCube(){cancelCd();V.pendingReset=false;V.cube=startCube();V.idx=0;V.anim=null;V.playing=false;V.dirty=true;if(typeof prReset==='function')prReset();renderAlg()}
+function renderAlg(){
+  if(V.live){lvRenderViewer();return}
+  const el=document.getElementById('vAlg');
+  el.innerHTML=V.toks.map((t,i)=>`<span class="${i<V.idx?'done':''}${V.anim&&V.anim.i===i?' cur':''}">${t.replace("'","′")}</span>`).join('');
+  document.getElementById('vBar').innerHTML=V.toks.map((t,i)=>`<i class="${i<V.idx?'d':''}${V.anim&&V.anim.i===i?' c':''}"></i>`).join('');
+  document.getElementById('hudMoves').textContent=V.idx+'/'+V.toks.length;
+  document.getElementById('bPlay').textContent=V.playing?'❚❚':'▶';
+  const bd=document.getElementById('badge');
+  if(V.idx===0&&!V.anim){bd.textContent=V.item&&V.item.fromSolved?'CUBE RÉSOLU':'POSITION DE DÉPART';bd.className='badge'}
+  else if(V.idx===V.moves.length&&!V.anim&&!V.pendingReset){bd.textContent=V.item&&V.item.fromSolved?'FIN':'✓ RÉSOLU';bd.className='badge ok'}
+  else{bd.textContent='';bd.className='badge'}
+  if(typeof prBadge==='function')prBadge();
+}
+function startMove(dir){
+  if(dir&&V.cd)cancelCd();
+  if(V.anim)finishAnim();
+  if(dir>0&&V.idx>=V.moves.length)return false;
+  if(dir<0&&V.idx<=0)return false;
+  const i=dir>0?V.idx:V.idx-1;const m=V.moves[i];
+  const mv={axis:m.axis,layer:m.layer,q:dir>0?m.q:-m.q};
+  const dur=(Math.abs(mv.q)===2?1.45:1)*380/V.speed;
+  V.anim={mv,i,dir,t0:performance.now(),dur};blip(dir>0?330+(i%5)*55:220);
+  renderAlg();return true;
+}
+function finishAnim(){const a=V.anim;applyMove(V.cube,a.mv);V.anim=null;V.dirty=true;if(a.live)return;V.idx+=a.dir;renderAlg()}
+function play(){
+  cancelCd();
+  if(V.playing){V.playing=false;renderAlg();return}
+  if(V.idx>=V.moves.length){V.cube=startCube();V.idx=0;V.anim=null}
+  V.playing=true;V.waitUntil=performance.now()+(V.idx===0?350:0);renderAlg();
+}
+function tick(now){
+  if(V.live){
+    if(!V.anim&&LV.q.length){const m=parseMove(LV.q.shift());V.anim={mv:m,i:-1,dir:0,live:true,t0:now,dur:(LV.q.length>2?70:LV.q.length?140:230)};V.dirty=true}
+    if(LV.yawT!=null&&Math.abs(LV.yawT-V.yaw)>0.3){V.yaw+=(LV.yawT-V.yaw)*0.16;V.dirty=true}
+    if(lvHint())V.dirty=true;
+  }
+  if(V.anim){
+    const t=Math.min(1,(now-V.anim.t0)/V.anim.dur);
+    if(t>=1){finishAnim()}
+    V.dirty=true;
+  }
+  if(V.playing&&!V.anim&&now>=V.waitUntil){
+    if(V.pendingReset){V.pendingReset=false;V.cube=startCube();V.idx=0;V.dirty=true;renderAlg();V.waitUntil=now+450}
+    else if(V.idx<V.moves.length){startMove(1)}
+    else if(V.loop){V.pendingReset=true;V.waitUntil=now+900}
+    else{V.playing=false;renderAlg();blip(660);setTimeout(()=>blip(880),90)}
+  }
+  if(V.dirty){
+    let anim=null;
+    if(V.anim){const t=Math.min(1,(now-V.anim.t0)/V.anim.dur);const e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+      anim={axis:V.anim.mv.axis,layer:V.anim.mv.layer,angle:V.anim.mv.q*Math.PI/2*e}}
+    const mask=V.live?'all':V.item?V.item.mask:'all';
+    const img=R.draw(V.cube,{yaw:V.yaw,pitch:V.pitch,anim,color:colorFn(mask,V.full),cy:0.5});
+    mainCtx.putImageData(img,0,0);
+    const hm=lvHint();if(hm)drawHint(mainCtx,hm);
+    V.dirty=!!V.anim;
+  }
+  drawLogo(now);
+  requestAnimationFrame(tick);
+}
+
+// drag to rotate
+(()=>{let drag=null;
+  cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,yaw:V.yaw,pitch:V.pitch};cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{if(!drag)return;V.yaw=drag.yaw+(e.clientX-drag.x)*0.5;V.pitch=Math.max(-89,Math.min(89,drag.pitch+(e.clientY-drag.y)*0.5));V.dirty=true});
+  const end=()=>drag=null;cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+})();
+function setView(){const t=TABS.find(t=>t.k===V.tab);[V.yaw,V.pitch]=t.view;
+  if(V.item&&['oll','pll','pllc'].includes(V.item.mask)&&(V.tab==='beg'||V.tab==='guide')){V.pitch=46}V.dirty=true}
+
+// countdown 3-2-1 : laisse le temps de voir la position de départ
+let cdTimers=[];
+function cancelCd(){cdTimers.forEach(clearTimeout);cdTimers=[];V.cd=false;const e=document.getElementById('cd');e.className='cd';e.textContent=''}
+function countdown(delay){
+  cancelCd();V.cd=true;const e=document.getElementById('cd');
+  ['3','2','1'].forEach((n,i)=>cdTimers.push(setTimeout(()=>{e.textContent=n;e.className='cd';void e.offsetWidth;e.className='cd on';blip(440)},delay+i*550)));
+  cdTimers.push(setTimeout(()=>{e.className='cd';e.textContent='';V.cd=false;cdTimers=[];if(!V.playing)play()},delay+3*550));
+}
+// controls
+const $=id=>document.getElementById(id);
+$('bPlay').onclick=play;
+$('bReset').onclick=()=>{resetCube()};
+$('bFwd').onclick=()=>{if(V.live){lvSimulate();return}V.playing=false;startMove(1)};
+$('bBack').onclick=()=>{V.playing=false;startMove(-1)};
+$('bView').onclick=()=>{if(V.live){V.yaw=LV.yawT??V.yaw;lvView();return}setView()};
+function toggle(id,key,after){const b=$(id);b.classList.toggle('on',V[key]);b.onclick=()=>{V[key]=!V[key];b.classList.toggle('on',V[key]);V.dirty=true;after&&after()}}
+toggle('tLoop','loop');toggle('tSound','sound',()=>blip(520));
+$('speed').oninput=e=>{V.speed=+e.target.value};
+$('vAlg').onclick=e=>{e.currentTarget.classList.remove('hidden')};
+function updStar(){const b=$('btnStar');const on=V.item&&learned.has(V.item.id);b.classList.toggle('on',!!on);b.textContent=on?'★ APPRIS':'☆ APPRIS';
+  b.style.visibility=V.item&&V.item.cat!=='not'&&V.item.cat!=='guide'?'visible':'hidden'}
+$('btnStar').onclick=()=>{if(!V.item)return;const id=V.item.id;learned.has(id)?learned.delete(id):learned.add(id);LS.set('cubealgo-learned',[...learned]);
+  updStar();const c=document.querySelector(`.card[data-id="${id}"]`);if(c)c.classList.toggle('learned',learned.has(id));updProg()};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
+  if(V.live)return;
+  if(e.code==='Space'){e.preventDefault();play()}else if(e.key==='ArrowRight'){V.playing=false;startMove(1)}else if(e.key==='ArrowLeft'){V.playing=false;startMove(-1)}});
+
+// ================= LIST =================
+function thumb(it){
+  const c=document.createElement('canvas');
+  const st=it.fromSolved?newCube():applyAlg(newCube(),invertAlg(it.alg));
+  if(it.mask==='oll'||it.mask==='pll'||it.mask==='pllc'){c.width=c.height=40;topView(c,st,it.mask)}
+  else{c.width=c.height=48;
+    let anim=null;
+    if(it.fromSolved){const m=parseMove(it.alg);anim={axis:m.axis,layer:m.layer,angle:m.q*Math.PI/2*0.3}}
+    const img=new Pix(48).draw(st,{yaw:-35,pitch:26,color:colorFn(it.mask,false),scale:0.19,persp:false,anim});
+    c.getContext('2d').putImageData(img,0,0)}
+  return c;
+}
+let tabEls={};
+function buildTabs(){
+  const nav=$('tabs');nav.innerHTML='';
+  for(const t of TABS){const b=document.createElement('button');b.className='tab'+(t.k===V.tab?' on':'');
+    b.innerHTML=`${t.label}<small>${t.sub}</small>`;b.onclick=()=>{location.hash=t.k;};nav.appendChild(b);tabEls[t.k]=b}
+}
+function updProg(){
+  const el=$('prog');if(!el||!DATA[V.tab])return;
+  const ids=DATA[V.tab].flatMap(s=>s.items.map(i=>i.id));const n=ids.filter(i=>learned.has(i)).length;
+  el.textContent=V.tab==='not'?'':`★ ${n}/${ids.length} APPRIS`;
+}
+function buildList(){
+  const t=TABS.find(t=>t.k===V.tab);const L=$('list');L.innerHTML='';
+  const tb=document.createElement('div');tb.className='toolbar';
+  tb.innerHTML=`<div class="info">${t.info}</div><span class="prog" id="prog"></span>`+
+    (V.tab!=='not'?`<button class="btn y" id="bRand" style="font-size:9px">🎲 CAS AU HASARD</button><button class="tg ${V.quiz?'on':''}" id="tQuiz"><span class="sq"></span>MODE QUIZ</button>`:'');
+  L.appendChild(tb);
+  for(const s of DATA[V.tab]){
+    const sec=document.createElement('div');sec.className='sec';
+    sec.innerHTML=`<h3>${s.title}</h3><p class="d">${s.desc}</p>`;
+    const g=document.createElement('div');g.className='grid';
+    for(const it of s.items){
+      const c=document.createElement('div');c.className='card box'+(learned.has(it.id)?' learned':'')+(V.item===it?' sel':'');c.dataset.id=it.id;
+      c.appendChild(thumb(it));
+      const n=document.createElement('div');n.className='n';n.innerHTML=it.name+(it.star?' <span class="tag">'+(V.tab==='f2l'?'BASE':'2-LOOK')+'</span>':'');c.appendChild(n);
+      const a=document.createElement('div');a.className='a';a.textContent=it.cat==='not'?'':it.alg.replace(/'/g,'′');if(V.quiz)a.style.filter='blur(5px)';c.appendChild(a);
+      if(it.cat==='beg'||it.cat==='not'){const d=document.createElement('div');d.className='a';d.style.color='#9a93c2';d.style.marginTop='4px';d.textContent=it.cat==='beg'?it.name&&it.note:'';if(d.textContent)c.appendChild(d)}
+      c.onclick=()=>select(it);
+      g.appendChild(c);
+    }
+    sec.appendChild(g);L.appendChild(sec);
+  }
+  if($('bRand'))$('bRand').onclick=()=>{const all=DATA[V.tab].flatMap(s=>s.items);select(all[Math.floor(Math.random()*all.length)])};
+  if($('tQuiz'))$('tQuiz').onclick=()=>{V.quiz=!V.quiz;buildList()};
+  updProg();
+}
+function select(it){
+  loadItem(it);setView();
+  $('vAlg').classList.toggle('hidden',!!V.quiz);
+  let delay=150;
+  const r=$('viewer').getBoundingClientRect();
+  if(window.innerWidth<=860&&(r.top<-40||r.top>window.innerHeight*0.3)){$('viewer').scrollIntoView({behavior:'smooth',block:'start'});delay=900}
+  if(!(typeof BT!=='undefined'&&BT.connected))countdown(delay);
+}
+function showTab(k){
+  if(!TABS.find(t=>t.k===k))k='f2l';V.tab=k;
+  for(const t in tabEls)tabEls[t].classList.toggle('on',t===k);
+  if(k==='live'){$('bGuideNext').style.display='none';enterLive();return}
+  if(V.live)leaveLive();
+  if(k==='guide'){V.item=null;renderGuide();gViewer();$('bGuideNext').style.display=G.item?'block':'none';return}
+  $('bGuideNext').style.display='none';
+  buildList();
+  const first=DATA[k][0].items[0];loadItem(first);setView();
+}
+window.addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
+
+// ================= LOGO =================
+const logoR=new Pix(24);const logoCube=newCube();const logoCtx=$('logoCube').getContext('2d');let logoT=0;
+function drawLogo(now){if(now-logoT<90)return;logoT=now;
+  const img=logoR.draw(logoCube,{yaw:-35+now/40%360,pitch:24,color:colorFn('all',true),scale:0.15,persp:false});
+  logoCtx.putImageData(img,0,0)}
+
+// ================= MODE GUIDÉ (CFOP) =================
+const IDLE={id:'g-idle',name:'MODE GUIDÉ',alg:'',alts:[],mask:'all',fromSolved:true,cat:'guide',sec:'Ton cube : blanc en bas, vert devant',note:''};
+// clones pour le 2-look PLL : on ne regarde que les coins
+ITEMS.gT={...ITEMS.pT,id:'gT',mask:'pllc',name:'Phares d’un côté',note:'T-perm · seuls les coins comptent',cat:'guide'};
+ITEMS.gY={...ITEMS.pY,id:'gY',mask:'pllc',name:'Aucun phare',note:'Y-perm · seuls les coins comptent',cat:'guide'};
+const F2LG=DATA.f2l.map(s=>s.items.map(i=>i.id));
+const OLLG=DATA.oll.map(s=>s.items.map(i=>i.id));
+const P=k=>k.map(x=>'p'+x);
+
+const WHY_METHOD=`<b>Pourquoi CFOP ?</b> C’est la méthode de presque tous les speedcubers (records du monde sous les 5 s). Elle découpe la résolution en 4 étapes claires, et chaque étape se résout par reconnaissance : tu regardes, tu identifies le cas, tu appliques l’algo.<br><br>
+<b>Par rapport à la méthode débutant</b> (couche par couche) : CFOP insère le coin et l’arête de la 2e couronne <i>ensemble</i> (F2L) au lieu de faire tous les coins puis toutes les arêtes. Ça divise par deux le nombre de mouvements sur cette partie (~60 contre ~120 coups au total en débutant).<br><br>
+<b>Par rapport à Roux ou ZZ</b> : ces méthodes sont aussi très efficaces (Roux fait moins de coups), mais elles reposent beaucoup sur l’intuition et des tranches M peu naturelles au début. CFOP a l’avantage d’être progressive : tu peux commencer en <b>2-look</b> (16 algos) puis passer au <b>complet</b> petit à petit, sans rien réapprendre.`;
+
+const STAGES={
+  prep:{title:'PRÊT ?',why:''},
+  cross:{title:'CROIX',reps:4,repLabel:'ARÊTE',
+    why:`<b>Pourquoi commencer par la croix ?</b> Les 4 arêtes blanches servent de fondation : une fois en place, chaque paire F2L a un emplacement clair à remplir. On la fait <b>en bas</b> (et pas en haut comme en débutant) pour ne jamais avoir à retourner le cube ensuite : tu vois directement les pièces des étapes suivantes.`},
+  f2l:{title:'F2L',reps:4,repLabel:'PAIRE',
+    why:`<b>Pourquoi F2L ?</b> F2L = « First 2 Layers ». Au lieu de placer un coin puis son arête (2 algos), on les assemble en <b>paire</b> en haut et on les insère d’un seul coup. C’est l’étape qui fait gagner le plus de temps par rapport à la méthode débutant. Les algos sont courts et très logiques : avec la pratique tu les feras « à l’intuition ».`},
+  oll1:{title:'OLL 1/2',why:`<b>Pourquoi en 2 temps ?</b> L’OLL complète compte 57 cas. En <b>2-look</b>, tu fais d’abord la croix jaune (3 algos) puis les coins jaunes (7 algos) : seulement 10 algos à connaître, pour à peine 1-2 s de plus.`},
+  oll2:{title:'OLL 2/2',why:`<b>Les coins jaunes</b> : la croix est faite, il reste 7 cas possibles. Le plus courant est le Sune (1 coin jaune en haut).`},
+  oll:{title:'OLL',why:`<b>Pourquoi OLL ?</b> OLL = « Orientation of the Last Layer » : on rend toute la face du haut jaune <b>en un seul algo</b>, sans se soucier de l’ordre des pièces. On ne regarde que le jaune, ce qui rend la reconnaissance rapide.`},
+  pll1:{title:'PLL 1/2',why:`<b>Pourquoi les coins d’abord ?</b> En 2-look PLL, tu replaces d’abord les coins (2 algos) puis les arêtes (4 algos). 6 algos au lieu de 21 pour la PLL complète.`},
+  pll2:{title:'PLL 2/2',why:`<b>Dernière ligne droite</b> : les coins sont bons, il ne reste qu’à faire tourner les arêtes. Ce sont les algos les plus courts et les plus fréquents de la PLL.`},
+  pll:{title:'PLL',why:`<b>Pourquoi PLL ?</b> PLL = « Permutation of the Last Layer » : la face jaune est faite, on déplace les pièces à leur place <b>en un seul algo</b>. Le repère clé : les « phares » (2 coins côte à côte de même couleur sur un côté).`},
+  done:{title:'FIN',why:''},
+};
+const TREES={
+  cross:{root:{q:'Où est l’arête blanche ?',hint:'Tiens le cube blanc en bas. Choisis une arête blanche, puis tourne <b>tout le cube</b> pour mettre devant le centre de son autre couleur (ex. arête blanc-rouge → centre rouge devant). Tourne ensuite la face du haut (U) ou du bas si besoin pour retrouver une des images.',
+    items:['b1-1','b1-2','b1-3','b1-4','b1-5'],skip:'Déjà bien placée ✓'}},
+  f2l:{
+    root:{q:'Où est le coin de la paire ?',hint:'Tourne tout le cube (sans le retourner) pour avoir un <b>emplacement vide devant-droite</b>. La paire = le coin blanc + l’arête qui vont dedans (ex. coin blanc-vert-rouge + arête vert-rouge).',
+      opts:[{l:'En haut',next:'cUp'},{l:'En bas, dans son emplacement',next:'cDown'},
+        {l:'Coincé dans un autre emplacement',tip:'Tourne le cube pour mettre cet emplacement devant-droite et fais <b>R U R′</b> : le coin remonte en haut. Remets ensuite l’emplacement vide devant-droite et réponds à nouveau.'}],
+      skip:'Paire déjà en place ✓'},
+    cUp:{q:'Et l’arête de la paire ?',opts:[{l:'En haut aussi',next:'bothUp'},{l:'Dans l’emplacement devant-droite',items:F2LG[2]},
+        {l:'Dans un autre emplacement',tip:'Mets cet emplacement devant-droite, fais <b>R U R′</b> pour sortir l’arête (sans toucher au coin s’il est au-dessus : tourne U avant), puis reviens.'}]},
+    bothUp:{q:'Le blanc du coin regarde…',opts:[{l:'Vers le haut',items:F2LG[0]},{l:'Sur le côté',items:F2LG[1]}]},
+    cDown:{q:'Et l’arête de la paire ?',opts:[{l:'En haut',items:F2LG[3]},{l:'Dans l’emplacement aussi',items:F2LG[4]}]},
+  },
+  oll1:{root:{q:'Quelle forme fait le jaune sur les arêtes du haut ?',hint:'Ne regarde que les 4 arêtes du haut (pas les coins). Tourne U pour retrouver l’image.',items:['b4-1','b4-2','b4-3'],skip:'Croix jaune déjà faite ✓'}},
+  oll2:{root:{q:'Quel motif font les coins jaunes ?',hint:'Regarde où sont les autocollants jaunes des coins (dessus et côtés). Tourne U pour retrouver l’image.',items:['o21','o22','o23','o24','o25','o26','o27'],skip:'Face jaune finie ✓'}},
+  oll:{root:{q:'Combien d’arêtes jaunes en haut ?',hint:'Ne compte que les arêtes (milieu des côtés de la face du haut).',
+    opts:[{l:'Les 4 (croix)',items:OLLG[0]},{l:'2 côte à côte (L)',items:OLLG[1]},{l:'2 opposées (ligne)',items:OLLG[2]},{l:'Aucune (point)',items:OLLG[3]}],skip:'Tout est déjà jaune ✓'}},
+  pll1:{root:{q:'Vois-tu des « phares » ?',hint:'Phares = sur une face latérale, les 2 coins du haut ont la même couleur. Ne regarde que les coins.',
+    opts:[{l:'Sur un seul côté',items:['gT'],hintAfter:'Place les phares <b>à gauche</b> (tourne U).'},{l:'Aucun phare',items:['gY']}],skip:'Phares sur les 4 côtés ✓'}},
+  pll2:{root:{q:'Comment sont les arêtes ?',hint:'Les coins sont bons. S’il y a une face complète, mets-la derrière.',items:P(['Ua','Ub','H','Z']),skip:'Tout est résolu ✓'}},
+  pll:{root:{q:'Vois-tu des « phares » ?',hint:'Phares = sur une face latérale, les 2 coins du haut ont la même couleur.',
+    opts:[{l:'Sur les 4 côtés',items:P(['Ua','Ub','H','Z'])},{l:'Sur un seul côté',items:P(['Aa','Ab','T','F','Ja','Jb','Ra','Rb','Ga','Gb','Gc','Gd'])},{l:'Aucun',items:P(['E','V','Y','Na','Nb'])}],skip:'Déjà résolu ✓'}},
+};
+function stageList(){return G.lvl==='full'?['prep','cross','f2l','oll','pll','done']:['prep','cross','f2l','oll1','oll2','pll1','pll2','done']}
+let G=Object.assign({lvl:null,si:0,rep:0,node:'root',list:null,listHint:'',item:null,tip:null,why:false,hist:[]},LS.get('cubealgo-guide',{}));
+function gSave(){LS.set('cubealgo-guide',{...G,hist:G.hist.slice(-30)})}
+function gPush(){G.hist.push(JSON.stringify({...G,hist:[]}))}
+function gBack(){if(!G.hist.length)return;const h=G.hist.pop();G={...JSON.parse(h),hist:G.hist};gSave();renderGuide();gViewer()}
+function gReset(nolvl){gPush();Object.assign(G,{si:0,rep:0,node:'root',list:null,item:null,tip:null});if(nolvl)G.lvl=null;gSave();renderGuide();gViewer()}
+function gNext(){
+  gPush();const st=STAGES[stageList()[G.si]];
+  if(st.reps&&G.rep<st.reps-1)G.rep++;else{G.si=Math.min(G.si+1,stageList().length-1);G.rep=0}
+  Object.assign(G,{node:'root',list:null,item:null,tip:null,listHint:''});gSave();renderGuide();gViewer();
+  if(window.innerWidth<=860)$('list').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function gViewer(){
+  const show=V.tab==='guide'&&G.item&&ITEMS[G.item];
+  $('bGuideNext').style.display=show?'block':'none';
+  if(V.tab!=='guide')return;
+  if(show){if(!V.item||V.item.id!==G.item)select(ITEMS[G.item])}
+  else if(!V.item||V.item.id!=='g-idle'){loadItem(IDLE);setView()}
+}
+function makeCard(it,onclick){
+  const c=document.createElement('div');c.className='card box'+(learned.has(it.id)?' learned':'')+(V.item&&V.item.id===it.id?' sel':'');c.dataset.id=it.id;
+  c.appendChild(thumb(it));
+  const n=document.createElement('div');n.className='n';n.textContent=it.name;c.appendChild(n);
+  const a=document.createElement('div');a.className='a';a.textContent=it.cat==='not'?'':it.alg.replace(/'/g,'′');if(V.quiz&&V.tab!=='guide')a.style.filter='blur(5px)';c.appendChild(a);
+  if(it.note&&(it.cat==='beg'||it.cat==='guide')){const d=document.createElement('div');d.className='a';d.style.cssText='color:#9a93c2;margin-top:4px';d.textContent=it.note;c.appendChild(d)}
+  c.onclick=onclick;return c;
+}
+function renderGuide(){
+  const L=$('list');L.innerHTML='';
+  const box=document.createElement('div');box.className='gbox box';L.appendChild(box);
+  const H=s=>{const d=document.createElement('div');d.innerHTML=s;while(d.firstChild)box.appendChild(d.firstChild)};
+  H(`<div class="ghead"><h3 class="pf">MODE GUIDÉ · CFOP</h3>${G.lvl?`<span class="lvl pf">${G.lvl==='full'?'COMPLET':'2-LOOK'}</span>`:''}</div>`);
+  if(!G.lvl){
+    H(`<p class="gtxt">Je te guide pour résoudre ton cube étape par étape. Aux étapes à algos, je te pose quelques questions pour trouver <b>ton</b> cas, puis tu le vois animé sur le cube.</p>
+       <div class="why">${WHY_METHOD}</div><p class="gq pf">CHOISIS TON NIVEAU</p>`);
+    const opts=[['2l','2-LOOK','Recommandé pour commencer · OLL et PLL en 2 temps · ~16 algos'],['full','COMPLET','Pour aller vite · 1 algo par étape · 41 F2L + 57 OLL + 21 PLL']];
+    const w=document.createElement('div');w.className='choices';
+    for(const [k,l,s] of opts){const b=document.createElement('button');b.className='choice';b.innerHTML=`<span class="pf">${l}</span><small>${s}</small>`;
+      b.onclick=()=>{gPush();G.lvl=k;G.si=1;gSave();renderGuide();gViewer()};w.appendChild(b)}
+    box.appendChild(w);return;
+  }
+  const stages=stageList(),key=stages[G.si],st=STAGES[key];
+  H(`<div class="pills">${stages.slice(1).map((k,i)=>`<span class="pill ${i+1<G.si?'d':''}${i+1===G.si?' c':''}">${STAGES[k].title}</span>`).join('')}</div>`);
+  if(key==='prep'){G.si=1;return renderGuide()}
+  if(key==='done'){
+    H(`<div class="bravo pf">BRAVO !</div><p class="gtxt">Si la couche du haut est décalée, tourne <b>U</b> jusqu’à ce que tout soit aligné… et voilà, ton cube est résolu !</p>
+      <p class="gtxt">Prochain défi : apprendre les algos par cœur (onglets F2L, OLL, PLL, bouton ★ APPRIS) puis passer au niveau ${G.lvl==='full'?'supérieur : chronomètre-toi !':'COMPLET.'}</p>`);
+    const w=document.createElement('div');w.className='gnav';
+    w.innerHTML=`<button class="btn y" id="gAgain">↺ NOUVEAU CUBE</button><button class="btn" id="gLvl">CHANGER DE NIVEAU</button>`;box.appendChild(w);
+    $('gAgain').onclick=()=>gReset();$('gLvl').onclick=()=>gReset(true);blip(660);return;
+  }
+  H(`<h4 class="gstep pf">${st.title}${st.reps?` · ${st.repLabel} ${G.rep+1}/${st.reps}`:''}</h4>`);
+  H(`<button class="whyb pf" id="gWhy">${G.why?'▼':'▶'} POURQUOI CETTE ÉTAPE ?</button>${G.why?`<div class="why">${st.why}</div>`:''}`);
+  const tree=TREES[key],node=tree[G.node];
+  if(G.item){
+    const it=ITEMS[G.item];
+    H(`<p class="gq pf">TON CAS : ${it.name}</p><p class="gtxt">${G.listHint?G.listHint+' ':''}Regarde l’animation : position de départ, puis exécute l’algo sur ton cube.</p>
+      <div class="alg" style="margin:8px 0 14px">${tokens(it.alg).map(t=>`<span>${t.replace("'","′")}</span>`).join('')}</div>`);
+    const w=document.createElement('div');w.className='gnav';
+    w.innerHTML=`<button class="btn big" id="gDone">✓ C’EST FAIT</button><button class="btn" id="gReplay">↻ REVOIR</button><button class="btn" id="gChange">← AUTRE CAS</button>`;box.appendChild(w);
+    $('gDone').onclick=gNext;$('gReplay').onclick=()=>select(it);
+    $('gChange').onclick=()=>{gPush();G.item=null;gSave();renderGuide();gViewer()};
+  }else if(G.list){
+    H(`<p class="gq pf">LEQUEL RESSEMBLE À TON CUBE ?</p><p class="gtxt">${G.listHint?G.listHint+' ':''}Tourne la face du haut (U) pour retrouver une image. Les pièces grises n’ont pas d’importance.</p>`);
+    const g=document.createElement('div');g.className='grid';
+    for(const id of G.list){const it=ITEMS[id];g.appendChild(makeCard(it,()=>{gPush();G.item=id;gSave();renderGuide();gViewer()}))}
+    box.appendChild(g);
+  }else{
+    H(`<p class="gq pf">${node.q}</p>${node.hint?`<p class="gtxt">${node.hint}</p>`:''}`);
+    if(G.tip)H(`<div class="tip">${G.tip}</div>`);
+    if(node.items){
+      const g=document.createElement('div');g.className='grid';
+      for(const id of node.items)g.appendChild(makeCard(ITEMS[id],()=>{gPush();G.item=id;G.list=node.items;gSave();renderGuide();gViewer()}));
+      box.appendChild(g);
+    }
+    const w=document.createElement('div');w.className='choices';
+    for(const o of node.opts||[]){const b=document.createElement('button');b.className='choice';b.innerHTML=`<span class="pf">${o.l}</span>`;
+      b.onclick=()=>{gPush();G.tip=null;
+        if(o.next)G.node=o.next;else if(o.items){G.list=o.items;G.listHint=o.hintAfter||'';if(o.items.length===1)G.item=o.items[0]}else if(o.tip)G.tip=o.tip;
+        gSave();renderGuide();gViewer()};w.appendChild(b)}
+    if(node.skip){const b=document.createElement('button');b.className='choice ok';b.innerHTML=`<span class="pf">${node.skip}</span>`;b.onclick=gNext;w.appendChild(b)}
+    box.appendChild(w);
+  }
+  const nav=document.createElement('div');nav.className='gnav small';
+  nav.innerHTML=`<button class="btn" id="gBack" ${G.hist.length?'':'disabled'}>← RETOUR</button><button class="btn" id="gRestart">↺ RECOMMENCER</button><button class="btn" id="gLvl2">NIVEAU</button>`;
+  box.appendChild(nav);
+  $('gBack').onclick=gBack;$('gRestart').onclick=()=>gReset();$('gLvl2').onclick=()=>gReset(true);
+  $('gWhy').onclick=()=>{G.why=!G.why;gSave();renderGuide()};
+}
+$('bGuideNext').onclick=gNext;
+
+// ================= CUBE CONNECTÉ (onglet MON CUBE + suivi en direct) =================
+LIVE.init(DATA, ITEMS);
+const LV = { st: LS.get('cubealgo-live-st', null), method: LS.get('cubealgo-live-m', 'beg'), plan: null, si: 0, trk: null,
+  q: [], paint: 'D', battery: null, yawT: null, finished: false, scr: '' };
+if (!Array.isArray(LV.st) || LV.st.length !== 54 || LIVE.validate(LV.st)) LV.st = LIVE.solved();
+if (!LIVE.METHODS[LV.method]) LV.method = 'beg';
+const lvSave = () => { LS.set('cubealgo-live-st', LV.st); LS.set('cubealgo-live-m', LV.method); };
+const FACE_FR = { U: 'DESSUS', D: 'DESSOUS', F: 'DEVANT', B: 'DERRIÈRE', R: 'DROITE', L: 'GAUCHE' };
+const hex = (k) => `rgb(${COL[k].join(',')})`;
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cr3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+// État (54 cases) → cubies du moteur de rendu
+function cubiesFromState(st) {
+  const cube = newCube(), N = LIVE.NORMALS;
+  for (const c of cube) {
+    const h = c.home; if (h.filter((v) => v).length < 2) continue;
+    const faces = []; if (h[0]) faces.push(h[0] > 0 ? 'R' : 'L'); if (h[1]) faces.push(h[1] > 0 ? 'U' : 'D'); if (h[2]) faces.push(h[2] > 0 ? 'F' : 'B');
+    const want = faces.slice().sort().join('');
+    const pos = LIVE.POS.find((p) => { const idx = LIVE.posSt(p); return idx.length === faces.length && idx.map((i) => st[i]).sort().join('') === want; });
+    const idx = LIVE.posSt(pos), from = [], to = [];
+    for (const f of faces) { from.push(N[f]); to.push(LIVE.STICKERS[idx.find((i) => st[i] === f)].normal); }
+    if (from.length === 2) { from.push(cr3(from[0], from[1])); to.push(cr3(to[0], to[1])); }
+    const Rm = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (let k = 0; k < 3; k++) for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) Rm[i * 3 + j] += to[k][i] * from[k][j];
+    c.pos = pos.slice(); c.rot = Rm;
+  }
+  return cube;
+}
+
+// ---------- Bluetooth ----------
+const BT = new LIVE.SmartCube({
+  connected(name) { LV.status = name || 'CUBE'; btUI(); lvToast('CUBE CONNECTÉ'); },
+  disconnected() { LV.battery = null; btUI(); lvToast('CUBE DÉCONNECTÉ'); },
+  battery(b) { LV.battery = b; btUI(); },
+  move(m) { const { f, d } = LIVE.nativeMove(m); onCubeMove(f, d); },
+  state(fc) { const st = LIVE.fromNative(fc); if (!LIVE.validate(st) && st.join('') !== LV.st.join('')) { lvSetState(st); lvToast('ÉTAT DU CUBE SYNCHRONISÉ'); } },
+});
+function btUI() {
+  const on = BT.connected;
+  const t = on ? `◉ CONNECTÉ${LV.battery != null ? ' · ' + LV.battery + '%' : ''}` : '◌ CUBE NON CONNECTÉ';
+  document.querySelectorAll('.btStat').forEach((e) => { e.textContent = t; e.classList.toggle('on', on); });
+  document.querySelectorAll('.btBtn').forEach((e) => { e.textContent = on ? 'DÉCONNECTER' : '◉ CONNECTER LE CUBE'; });
+}
+async function btToggle() {
+  if (BT.connected) { BT.disconnect(); return; }
+  if (!navigator.bluetooth) { lvToast('BLUETOOTH INDISPONIBLE ICI : OUVRE L’APPLI DANS CHROME OU EDGE (ORDI, ANDROID) OU BLUEFY (IPHONE)', 6500); return; }
+  try { document.querySelectorAll('.btStat').forEach((e) => (e.textContent = '… CONNEXION')); await BT.connect(); }
+  catch (e) {
+    btUI();
+    if (e.name === 'SecurityError') lvToast('BLUETOOTH BLOQUÉ DANS CETTE PAGE INTÉGRÉE : OUVRE LE LIEN GITHUB DIRECTEMENT', 6500);
+    else if (e.name !== 'NotFoundError') lvToast('CONNEXION IMPOSSIBLE : ' + e.message, 5000);
+  }
+}
+let toastT = null;
+function lvToast(msg, ms = 2600) {
+  let el = $('lvToast');
+  if (!el) { el = document.createElement('div'); el.id = 'lvToast'; el.className = 'lvtoast pf'; document.body.appendChild(el); }
+  el.textContent = msg; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), ms);
+}
+
+// ---------- mouvements du cube ----------
+function onCubeMove(f, d) {
+  LV.st = LIVE.turn(LV.st, f, d === 1 ? 1 : 3); lvSave();
+  if (V.live) { liveMove(f, d); return; }
+  practiceMove(f, d);
+}
+function liveMove(f, d) {
+  LV.q.push(f + (d === 1 ? '' : "'")); V.dirty = true;
+  if (LV.trk) {
+    const ok = LV.trk.move(f, d);
+    blip(ok ? 330 : 160);
+    if (LV.trk.done) lvNextStep();
+  }
+  if (LIVE.isSolved(LV.st) && LV.plan) { LV.plan = null; LV.trk = null; LV.finished = true; blip(660); setTimeout(() => blip(880), 90); lvToast('★ CUBE RÉSOLU ★', 3500); }
+  lvRender();
+}
+function lvNextStep() {
+  LV.si++;
+  if (!LV.plan || LV.si >= LV.plan.length) { LV.trk = null; return; }
+  LV.trk = new LIVE.Tracker(LV.plan[LV.si].conv);
+  lvView();
+}
+function lvStart() {
+  const err = LIVE.validate(LV.st);
+  if (err) { lvToast(err.toUpperCase(), 4500); return; }
+  if (LIVE.isSolved(LV.st)) { lvToast('TON CUBE EST DÉJÀ RÉSOLU : MÉLANGE-LE !'); return; }
+  try { LV.plan = LIVE.plan(LV.st, LV.method); } catch (e) { LV.plan = null; lvToast('CALCUL IMPOSSIBLE : VÉRIFIE LES COULEURS'); return; }
+  LV.si = -1; LV.finished = false; lvNextStep(); lvRender();
+}
+function lvStop() { LV.plan = null; LV.trk = null; LV.finished = false; }
+function lvSetState(st) {
+  LV.st = st.slice(); lvSave(); LV.finished = false;
+  if (V.live) { LV.q = []; if (V.anim && V.anim.live) V.anim = null; V.cube = cubiesFromState(LV.st); V.dirty = true; }
+  if (LV.plan) lvStart(); else lvRender();
+}
+function lvSimulate() {
+  if (!LV.trk) return;
+  const c = LV.trk.pending[0]; const f = Object.keys(c.need)[0];
+  onCubeMove(f, c.need[f] === 3 ? -1 : 1);
+}
+// vue : la face devant est RING[k]
+function lvView() {
+  const k = LV.trk && LV.plan ? LV.plan[LV.si].view : 0;
+  let t = -35 - 90 * k; while (t - V.yaw > 180) t -= 360; while (t - V.yaw < -180) t += 360;
+  LV.yawT = t; V.pitch = 26; V.dirty = true;
+}
+const dispFace = (f, k) => { const i = LIVE.RING.indexOf(f); return i < 0 ? f : LIVE.RING[(i - k + 4) % 4]; };
+
+// ---------- flèches sur le cube pixel ----------
+function drawHint(ctx, move) {
+  const W = R.W, S = W * 0.142, Dd = 11, cy = W * 0.5;
+  const Vm = m3(rotF('x', V.pitch * Math.PI / 180), rotF('y', V.yaw * Math.PI / 180));
+  const P = (v) => { const w = mv3(Vm, v); const f = Dd / (Dd - w[2]); return [W / 2 + w[0] * S * f, cy - w[1] * S * f]; };
+  const vis = (n) => mv3(Vm, n)[2] > 0.15;
+  const n = LIVE.NORMALS[move[0]], om = n.map((x) => x * (move.endsWith("'") ? 1 : -1));
+  const col = Math.floor(performance.now() / 280) % 2 ? '#ff3e8a' : '#ffd23f';
+  const line = (pts) => {
+    const a = pts[pts.length - 2], b = pts[pts.length - 1];
+    const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, hs = W * 0.045;
+    for (const [lw, c] of [[W * 0.034, '#05040b'], [W * 0.017, col]]) {
+      ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.lineCap = 'square'; ctx.lineJoin = 'miter'; ctx.beginPath();
+      pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      ctx.moveTo(b[0] - ux * hs - uy * hs * 0.85, b[1] - uy * hs + ux * hs * 0.85); ctx.lineTo(b[0], b[1]);
+      ctx.lineTo(b[0] - ux * hs + uy * hs * 0.85, b[1] - uy * hs - ux * hs * 0.85); ctx.stroke();
+    }
+  };
+  for (const f of LIVE.FACES) {
+    const Vn = LIVE.NORMALS[f]; if (Math.abs(dot3(Vn, n)) > 0.5 || !vis(Vn)) continue;
+    const mid = n.map((x, i) => x + Vn[i] * 1.53);
+    let d = cr3(om, n.map((x, i) => x + Vn[i])); const dl = Math.hypot(...d); d = d.map((x) => x / dl);
+    const pts = []; for (let t = -1.05; t <= 1.06; t += 0.35) pts.push(P(mid.map((m, i) => m + d[i] * t)));
+    line(pts);
+  }
+  if (vis(n)) {
+    const u = Math.abs(n[1]) > 0.5 ? [1, 0, 0] : [0, 1, 0], v = cr3(n, u), sg = move.endsWith("'") ? 1 : -1;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) { const th = Math.PI / 4 + sg * i * (1.5 * Math.PI / 18); pts.push(P(n.map((x, j) => x * 1.53 + 0.85 * (u[j] * Math.cos(th) + v[j] * Math.sin(th))))); }
+    line(pts);
+  }
+}
+function lvHint() { return V.live && LV.trk && !V.anim && !LV.q.length ? LV.trk.next() : null; }
+
+// ---------- affichage ----------
+function stepTokens(step, trk) {
+  return step.conv.map((t, i) => {
+    let cls = '';
+    if (trk) { if (i < trk.cur) cls = 'done'; else if (i === trk.cur && !trk.fix) cls = 'cur'; }
+    return `<span class="${cls}">${t.tok.replace("'", '′')}</span>`;
+  }).join('');
+}
+function moveInfo(m, k) {
+  const f = m[0], q = m.endsWith("'") ? 3 : m.endsWith('2') ? 2 : 1;
+  return { disp: dispFace(f, k) + (q === 3 ? '′' : q === 2 ? '2' : ''), face: f, color: hex(f),
+    txt: `${FACE_FR[dispFace(f, k)]} (${LIVE.NAME[f].toUpperCase()})`, sens: q === 2 ? 'DEMI-TOUR' : q === 3 ? '↺ SENS INVERSE' : '↻ SENS HORAIRE' };
+}
+function lvRenderViewer() {
+  const step = LV.plan && LV.trk ? LV.plan[LV.si] : null;
+  $('vName').textContent = 'MON CUBE';
+  const k = step ? step.view : 0;
+  $('vSub').textContent = `Tiens ton cube jaune en haut, ${LIVE.NAME[LIVE.RING[k]]} devant.` + (BT.connected ? '' : ' Connecte-le pour suivre tes mouvements.');
+  const alg = $('vAlg'); alg.classList.remove('hidden');
+  alg.innerHTML = step ? stepTokens(step, LV.trk) : `<span>${LIVE.isSolved(LV.st) ? 'CUBE RÉSOLU' : 'LANCE LE GUIDE →'}</span>`;
+  $('vBar').innerHTML = LV.plan ? LV.plan.map((s, i) => `<i class="${i < LV.si ? 'd' : ''}${i === LV.si ? ' c' : ''}"></i>`).join('') : '';
+  $('hudMoves').textContent = LV.plan ? `${Math.min(LV.si + 1, LV.plan.length)}/${LV.plan.length}` : '';
+  const bd = $('badge');
+  if (LV.trk && LV.trk.fix) { const m = LV.trk.next(); bd.textContent = '✗ ANNULE : ' + moveInfo(m, k).disp; bd.className = 'badge'; }
+  else if (LIVE.isSolved(LV.st)) { bd.textContent = '✓ RÉSOLU'; bd.className = 'badge ok'; }
+  else { bd.textContent = ''; bd.className = 'badge'; }
+}
+function renderLive() {
+  const L = $('list'); L.innerHTML = '';
+  const box = (html) => { const d = document.createElement('div'); d.className = 'gbox box'; d.innerHTML = html; L.appendChild(d); return d; };
+  box(`<div class="ghead"><h3 class="pf">MON CUBE CONNECTÉ</h3><span class="lvl pf btStat">◌</span></div>
+    <p class="gtxt">Connecte ton <b>Rubik’s Connected X</b> : le cube pixel suit tes mouvements en direct et l’appli lit l’état de ton cube. Ensuite, choisis une méthode : je trouve <b>ton cas</b> à chaque étape et je te montre l’algo à faire.</p>
+    <div class="gnav"><button class="btn big btBtn">◉ CONNECTER LE CUBE</button><button class="btn" id="lvRead">LIRE L’ÉTAT</button></div>`);
+  const m = box(`<p class="gq pf" style="margin-top:0">CHOISIS TA MÉTHODE</p><div class="choices" id="lvMethods"></div><div id="lvStep"></div>`);
+  const w = m.querySelector('#lvMethods');
+  for (const [key, M] of Object.entries(LIVE.METHODS)) {
+    const b = document.createElement('button'); b.className = 'choice' + (LV.method === key ? ' ok' : ''); b.dataset.m = key;
+    b.innerHTML = `<span class="pf">${M.name}</span><small>${{ beg: '7 étapes · les algos de l’onglet DÉBUTANT', cfop2: 'Croix, F2L, OLL et PLL en 2 temps · ~16 algos', cfop: 'Croix, F2L, OLL et PLL en 1 algo chacune' }[key]}</small>`;
+    b.onclick = () => { LV.method = key; lvSave(); if (LV.plan) lvStart(); else lvRender(); };
+    w.appendChild(b);
+  }
+  box(`<p class="gq pf" style="margin-top:0">RECOPIER LES COULEURS</p>
+    <p class="gtxt">Si le cube pixel n’est pas identique au tien, corrige-le : tiens ton cube <b>jaune en haut, vert devant</b>, choisis une couleur puis touche les cases.</p>
+    <div class="lvpal" id="lvPal"></div><div class="lvnet" id="lvNet"></div><p class="gtxt" id="lvValid"></p>
+    <div class="gnav"><button class="btn" id="lvSolved">CUBE RÉSOLU</button><button class="btn y" id="lvRand">🎲 MÉLANGE</button></div>
+    <p class="gq pf">APPLIQUER UN MÉLANGE</p><p class="gtxt">Notation officielle (blanc en haut, vert devant), ex. <b>R U2 F′ L D2</b>.</p>
+    <div class="lvrow"><input id="lvScr" class="lvin" type="text" spellcheck="false" autocomplete="off" placeholder="R U R′ U′ …"><button class="btn" id="lvScrBtn">OK</button></div>`);
+  box(`<p class="gq pf" style="margin-top:0">COMPATIBILITÉ</p><p class="gtxt">Bluetooth : Chrome ou Edge sur ordinateur et Android, ou l’appli <b>Bluefy</b> sur iPhone. Sans cube, utilise ▶| sous le cube pour jouer le mouvement suivant.</p>`);
+  // palette + patron
+  const pal = $('lvPal');
+  for (const f of ['D', 'U', 'F', 'B', 'R', 'L']) {
+    const b = document.createElement('button'); b.className = 'lvsw' + (LV.paint === f ? ' on' : ''); b.style.background = hex(f); b.title = LIVE.NAME[f];
+    b.onclick = () => { LV.paint = f; [...pal.children].forEach((x) => x.classList.toggle('on', x === b)); }; pal.appendChild(b);
+  }
+  const AX = { F: [[1, 0, 0], [0, 1, 0]], R: [[0, 0, -1], [0, 1, 0]], B: [[-1, 0, 0], [0, 1, 0]], L: [[0, 0, 1], [0, 1, 0]], U: [[1, 0, 0], [0, 0, -1]], D: [[1, 0, 0], [0, 0, 1]] };
+  const LAY = { U: [2, 1], L: [1, 2], F: [2, 2], R: [3, 2], B: [4, 2], D: [2, 3] };
+  const net = $('lvNet');
+  for (const f of ['U', 'L', 'F', 'R', 'B', 'D']) {
+    const el = document.createElement('div'); el.className = 'lvface'; el.style.gridColumn = LAY[f][0]; el.style.gridRow = LAY[f][1];
+    const n = LIVE.NORMALS[f], [ri, up] = AX[f];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+      const idx = LIVE.sIdx([0, 1, 2].map((j) => n[j] + ri[j] * (c - 1) + up[j] * (1 - r)), n);
+      const s = document.createElement('button'); s.className = 'lvs' + (r === 1 && c === 1 ? ' ctr' : ''); s.dataset.idx = idx;
+      if (!(r === 1 && c === 1)) s.onclick = () => { const st = LV.st.slice(); st[idx] = LV.paint; lvStop(); lvSetState(st); };
+      el.appendChild(s);
+    }
+    net.appendChild(el);
+  }
+  L.querySelectorAll('.btBtn').forEach((b) => (b.onclick = btToggle));
+  $('lvRead').onclick = () => { if (!BT.connected) { lvToast('CONNECTE D’ABORD TON CUBE'); return; } BT.send(0x33); };
+  $('lvSolved').onclick = () => { lvStop(); lvSetState(LIVE.solved()); };
+  $('lvRand').onclick = () => {
+    const fs = 'URFDLB'; const a = []; let last = '';
+    while (a.length < 20) { const f = fs[Math.floor(Math.random() * 6)]; if (f === last) continue; last = f; a.push(f + ['', "'", '2'][Math.floor(Math.random() * 3)]); }
+    $('lvScr').value = a.join(' '); lvStop(); lvSetState(LIVE.applyAlg(LIVE.solved(), LIVE.nativeAlg(a.join(' '))));
+    lvToast('MÉLANGE APPLIQUÉ AU CUBE PIXEL');
+  };
+  $('lvScrBtn').onclick = () => {
+    try { lvStop(); lvSetState(LIVE.applyAlg(LIVE.solved(), LIVE.nativeAlg($('lvScr').value.replace(/[’′`]/g, "'")))); }
+    catch (e) { lvToast(e.message.toUpperCase()); }
+  };
+  btUI(); lvRender();
+}
+function lvRender() {
+  if (V.live) { lvRenderViewer(); V.dirty = true; }
+  if (!$('lvStep')) return;
+  document.querySelectorAll('#lvMethods .choice').forEach((b) => b.classList.toggle('ok', b.dataset.m === LV.method));
+  document.querySelectorAll('#lvNet .lvs').forEach((s) => (s.style.background = hex(LV.st[+s.dataset.idx])));
+  const err = LIVE.validate(LV.st);
+  $('lvValid').innerHTML = err ? `<span style="color:var(--pink)">${err}</span>` : '<span style="color:var(--grn)">Couleurs valides.</span>';
+  const S = $('lvStep'); S.innerHTML = '';
+  const H = (s) => { const d = document.createElement('div'); d.innerHTML = s; while (d.firstChild) S.appendChild(d.firstChild); };
+  const M = LIVE.METHODS[LV.method];
+  if (!LV.plan || !LV.trk) {
+    if (LV.finished) H(`<div class="bravo pf">BRAVO !</div><p class="gtxt">Cube résolu avec la méthode ${M.name}. Mélange-le et recommence, ou essaie une autre méthode.</p>`);
+    H(`<div class="gnav"><button class="btn big" id="lvGo">▶ RÉSOUDRE MON CUBE</button></div>`);
+    $('lvGo').onclick = lvStart; return;
+  }
+  const step = LV.plan[LV.si];
+  H(`<div class="pills">${M.stages.map((t, i) => `<span class="pill ${i < step.stage ? 'd' : ''}${i === step.stage ? ' c' : ''}">${t.toUpperCase()}</span>`).join('')}</div>`);
+  H(`<h4 class="gstep pf">${step.title.toUpperCase()}</h4><p class="gtxt">${step.detail}</p>`);
+  if (step.id && ITEMS[step.id] && ITEMS[step.id].cat !== 'guide') {
+    const row = document.createElement('div'); row.className = 'lvcase';
+    row.appendChild(thumb(ITEMS[step.id]));
+    const t = document.createElement('div'); t.innerHTML = `<span class="pf">${ITEMS[step.id].name}</span><small>${ITEMS[step.id].sec || ''}</small>`; row.appendChild(t);
+    S.appendChild(row);
+  }
+  H(`<div class="alg" style="margin:8px 0 10px">${stepTokens(step, LV.trk)}</div>`);
+  const nx = LV.trk.next();
+  if (nx) {
+    const mi = moveInfo(nx, step.view);
+    H(`<div class="lvnext${LV.trk.fix ? ' fix' : ''}"><b class="pf" style="background:${mi.color};color:${['U', 'D'].includes(mi.face) ? '#05040b' : '#fff'}">${mi.disp}</b>
+      <div><span class="pf">${LV.trk.fix ? 'OUPS ! ANNULE : ' : 'PROCHAIN : '}${mi.txt}</span><small>${mi.sens}</small></div></div>`);
+  }
+  if (LV.trk.fix > 6) H(`<div class="tip">Tu t’es éloigné de l’algo : recalcule à partir de l’état actuel.</div>`);
+  H(`<div class="gnav small"><button class="btn" id="lvRe">↻ RECALCULER</button><button class="btn" id="lvStop">■ ARRÊTER</button></div>`);
+  $('lvRe').onclick = lvStart; $('lvStop').onclick = () => { lvStop(); lvRender(); };
+}
+
+// ---------- entraînement : les algos des autres onglets suivent tes mouvements ----------
+let PR = null;
+function prReset() { PR = !V.live && V.item && V.alg ? { trk: new LIVE.Tracker(LIVE.convert(V.alg, 0)), fired: false } : null; }
+function practiceMove(f, d) {
+  if (!PR) return;
+  if (V.playing) { V.playing = false; }
+  cancelCd();
+  if (PR.trk.done) { prResetKeepCube(); }
+  const ok = PR.trk.move(f, d);
+  blip(ok ? 330 + (PR.trk.cur % 5) * 55 : 160);
+  while (V.idx < Math.min(PR.trk.cur, V.moves.length)) { if (!startMove(1)) break; }
+  renderAlg();
+  if (PR.trk.done && !PR.fired) {
+    PR.fired = true; blip(660); setTimeout(() => blip(880), 90);
+    if (V.tab === 'guide' && G.item) setTimeout(() => { if (V.tab === 'guide') gNext(); }, 1300);
+  }
+}
+function prResetKeepCube() { V.cube = startCube(); V.idx = 0; V.anim = null; PR = { trk: new LIVE.Tracker(LIVE.convert(V.alg, 0)), fired: false }; }
+function prBadge() {
+  if (!PR || !BT.connected) return;
+  const bd = $('badge');
+  if (PR.trk.fix) { bd.textContent = '✗ ANNULE : ' + PR.trk.next().replace("'", '′'); bd.className = 'badge'; }
+  else if (!PR.trk.done && V.idx === 0 && !V.anim) { bd.textContent = 'À TOI : FAIS L’ALGO SUR TON CUBE'; bd.className = 'badge'; }
+}
+
+// ---------- entrée / sortie du mode MON CUBE ----------
+function enterLive() {
+  V.live = true; cancelCd();
+  V.item = { id: 'live', name: 'MON CUBE', alg: '', alts: [], mask: 'all', fromSolved: true, cat: 'live' };
+  V.alg = ''; V.toks = []; V.moves = []; V.idx = 0; V.anim = null; V.playing = false;
+  V.cube = cubiesFromState(LV.st); LV.q = []; PR = null;
+  document.body.classList.add('islive');
+  lvView(); renderLive();
+}
+function leaveLive() { V.live = false; LV.yawT = null; document.body.classList.remove('islive'); }
+
+document.addEventListener('keydown', (e) => {
+  if (!V.live || e.target.tagName === 'INPUT' || e.ctrlKey || e.metaKey) return;
+  const k = e.key.toUpperCase(); if (k.length !== 1 || !'URFDLB'.includes(k)) return;
+  const view = LV.trk && LV.plan ? LV.plan[LV.si].view : 0;
+  const i = LIVE.RING.indexOf(k);
+  onCubeMove(i < 0 ? k : LIVE.RING[(i + view) % 4], e.shiftKey ? -1 : 1);
+});
+
+// ================= INIT =================
+V.full=LS.get('cubealgo-full',false);toggle('tFull','full',()=>{LS.set('cubealgo-full',V.full)});
+buildTabs();sizeCanvas();window.addEventListener('resize',()=>{sizeCanvas()});
+showTab(location.hash.slice(1)||'f2l');
+requestAnimationFrame(tick);
+</script>
 </body>
 </html>
