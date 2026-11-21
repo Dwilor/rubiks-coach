@@ -3,6 +3,7 @@
 Tous les algos du 3×3 (débutant, F2L, OLL, PLL) avec un cube pixel animé, et maintenant la connexion Bluetooth au **Rubik's Connected X**.
 
 - **Appli principale** : https://dwilor.github.io/rubiks-coach/
+- **Algo Trainer** (entraînement avec le cube connecté, quiz) : https://dwilor.github.io/rubiks-coach/trainer/
 - **Ancienne version « Cube Coach »** : https://dwilor.github.io/rubiks-coach/coach/
 
 ## Onglet ◉ MON CUBE
@@ -27,3 +28,12 @@ Le Bluetooth fonctionne avec Chrome ou Edge sur ordinateur et Android, ou avec l
 ```
 
 `allow="bluetooth"` est indispensable pour connecter le cube depuis une page intégrée.
+
+## Algo Trainer
+
+Appli sobre et lisible pour travailler un algo avec le cube connecté utilisé comme manette (son état réel n'a pas d'importance).
+
+- **Guidé** : algo affiché, retour à la position de départ après 6 erreurs.
+- **Mémoire** : algo masqué, retour à zéro à la première erreur.
+- Après une réussite, le cas recommence automatiquement (série et meilleur temps).
+- **Quiz** sur les algos marqués « appris » : plus de 3 erreurs (ou algo affiché) et l'algo repasse « à revoir ».
