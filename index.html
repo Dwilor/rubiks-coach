@@ -1523,6 +1523,7 @@ function lvToast(msg, ms = 2600) {
 
 // ---------- mouvements du cube ----------
 function onCubeMove(f, d) {
+  if (window.KeepAwake) KeepAwake.ping();
   LV.st = LIVE.turn(LV.st, f, d === 1 ? 1 : 3); lvSave();
   if (V.live) { liveMove(f, d); return; }
   practiceMove(f, d);
@@ -1820,6 +1821,61 @@ V.full=LS.get('cubealgo-full',false);toggle('tFull','full',()=>{LS.set('cubealgo
 buildTabs();sizeCanvas();window.addEventListener('resize',()=>{sizeCanvas()});
 showTab(location.hash.slice(1)||'f2l');
 requestAnimationFrame(tick);
+</script>
+<script>
+// ===== Garder l'écran allumé : Wake Lock API, sinon vidéo muette en boucle (iOS / Bluefy) =====
+(function () {
+  const MP4 = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAANfbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAD6AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAol0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAD6AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAA+gAACAAAABAAAAAAIBbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAABAABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABrG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAWxzdGJsAAAAvHN0c2QAAAAAAAAAAQAAAKxhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAMmF2Y0MBZAAK/+EAF2dkAAqs2V7ARAAAAwAEAAADAAg8SJZYAQAEaO+Py/34+AAAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAF3AAABdwAAAAYc3R0cwAAAAAAAAABAAAABAAAQAAAAAAUc3RzcwAAAAAAAAABAAAAAQAAAChjdHRzAAAAAAAAAAMAAAABAACAAAAAAAEAAQAAAAAAAgAAQAAAAAAcc3RzYwAAAAAAAAABAAAAAQAAAAQAAAABAAAAJHN0c3oAAAAAAAAAAAAAAAQAAALHAAAADQAAAA0AAAANAAAAFHN0Y28AAAAAAAAAAQAAA48AAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAAC9m1kYXQAAAKsBgX//6jcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MSByZWY9MSBkZWJsb2NrPTE6LTM6LTMgYW5hbHlzZT0weDM6MHgzIG1lPWhleCBzdWJtZT0yIHBzeT0xIHBzeV9yZD0yLjAwOjAuNzAgbWl4ZWRfcmVmPTAgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0wIDh4OGRjdD0xIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PTAgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MyBiX3B5cmFtaWQ9MiBiX2FkYXB0PTEgYl9iaWFzPTAgZGlyZWN0PTEgd2VpZ2h0Yj0xIG9wZW5fZ29wPTAgd2VpZ2h0cD0xIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9MTAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4yMACAAAAAE2WIhAAXzn/s/8JV/9j2RKK///EAAAAJQZojGIL5z/7wAAAACUGeQUIL5z+GgQAAAAkBnmJEF85/hoA=';
+  const WEBM = 'data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAIzEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggId7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECvQAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYjI1w/2WOFN4ZyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhDuaygDgibCBELqBEJqBAhJUw2f8c3OgY8CAZ8iaRaOHRU5DT0RFUkSHjUxhdmY2MC4xNi4xMDBzc9ZjwItjxYjI1w/2WOFN4WfIoUWjh0VOQ09ERVJEh5RMYXZjNjAuMzEuMTAyIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDQuMDAwMDAwMDAwAB9DtnX554EAo6OBAACAEAIAnQEqEAAQAABHCIWFiJmEiAICAAwNYAD+/6tQgKOZgQPoALEBAAEQEAAYADA/9AwAAAD+/6tQgKOZgQfQALEBAAEQEAAYADA/9AwAAAD+/6tQgKOZgQu4ALEBAAEQEAAYADA/9AwAAAD+/6tQgBxTu2uRu4+zgQC3iveBAfGCAZ/wgQM=';
+  let enabled = true, lock = null, video = null, mode = 'off', onChange = () => {};
+  const set = (m) => { if (m !== mode) { mode = m; onChange(m); } };
+  function makeVideo() {
+    if (video) return video;
+    video = document.createElement('video');
+    video.setAttribute('playsinline', ''); video.setAttribute('webkit-playsinline', ''); video.setAttribute('muted', '');
+    video.muted = true; video.loop = true; video.setAttribute('title', 'Garder l’écran allumé');
+    video.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1';
+    for (const [src, type] of [[WEBM, 'video/webm'], [MP4, 'video/mp4']]) { const s = document.createElement('source'); s.src = src; s.type = type; video.appendChild(s); }
+    video.addEventListener('timeupdate', () => { if (video.currentTime > 2) video.currentTime = 0.5; });
+    document.body.appendChild(video);
+    return video;
+  }
+  async function viaWakeLock() {
+    if (!('wakeLock' in navigator)) return false;
+    try {
+      if (lock && !lock.released) return true;
+      lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => { if (mode === 'lock') set('off'); });
+      set('lock'); return true;
+    } catch (e) { return false; }
+  }
+  async function viaVideo() {
+    try { const v = makeVideo(); if (v.paused) await v.play(); set('video'); return true; } catch (e) { return false; }
+  }
+  async function acquire() {
+    if (!enabled || document.visibilityState !== 'visible') return;
+    if (mode === 'lock' && lock && !lock.released) return;
+    if (mode === 'video' && video && !video.paused) return;
+    if (await viaWakeLock()) return;
+    await viaVideo();
+  }
+  function release() {
+    if (lock) { lock.release().catch(() => {}); lock = null; }
+    if (video) video.pause();
+    set('off');
+  }
+  // un appui à l'écran autorise la vidéo de secours ; on réessaie à chaque retour sur la page
+  ['pointerdown', 'keydown', 'touchend'].forEach((ev) => document.addEventListener(ev, () => acquire(), { capture: true, passive: true }));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') acquire(); });
+  window.KeepAwake = {
+    get mode() { return mode; },
+    get enabled() { return enabled; },
+    setEnabled(v) { enabled = !!v; if (enabled) acquire(); else release(); },
+    ping() { acquire(); },           // appelé à chaque mouvement du cube
+    onChange(fn) { onChange = fn; },
+  };
+  acquire();
+})();
 </script>
 </body>
 </html>
