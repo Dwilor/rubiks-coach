@@ -124,7 +124,7 @@ h1{font-size:28px;letter-spacing:-.02em;margin:6px 0 4px}
 <body>
 <header><div class="hbar">
   <div class="brand"><i></i><span>Algo Trainer</span></div>
-  <div class="nav"><button data-go="lib" class="on">Algos</button><button data-go="quiz">Quiz</button></div>
+  <div class="nav"><button data-go="lib" class="on">Algos</button><button data-go="free">Libre</button><button data-go="quiz">Quiz</button></div>
   <button class="bt" id="btBtn"><span class="dot"></span><span class="lbl" id="btLbl">Connecter le cube</span></button>
   <button class="icon" id="setBtn" title="Réglages">⚙</button>
 </div></header>
@@ -163,7 +163,8 @@ h1{font-size:28px;letter-spacing:-.02em;margin:6px 0 4px}
   <label class="opt"><input type="checkbox" id="oLoop"><div>Enchaîner à l’infini<small>Après une réussite, le cube revient tout seul à la position de départ.</small></div></label>
   <label class="opt"><input type="checkbox" id="oPad"><div>Pavé de mouvements à l’écran<small>Pour s’entraîner sans le cube connecté (ou au clavier : U R F D L B, Maj = sens inverse).</small></div></label>
   <label class="opt"><input type="checkbox" id="oMask"><div>Mettre en évidence les pièces utiles<small>Les autres pièces sont grisées.</small></div></label>
-  <label class="opt"><input type="checkbox" id="oNoF"><div>Éviter F (pivoter le cube)<small>Remplace les F/B par une rotation ⟲y′ quand c’est plus simple.</small></div></label>
+  <div class="opt" style="display:block"><div>Éviter F et B (pivoter le cube)<small>Auto : rotation seulement quand l’algo devient plus simple. Toujours : aucun F ni B, quitte à ajouter des rotations (y, et parfois x).</small></div>
+    <div class="seg" id="oNoF" style="margin-top:8px;display:inline-flex"><button data-v="false">Non</button><button data-v="auto">Auto</button><button data-v="max">Toujours</button></div></div>
   <div class="actions"><button class="btn" id="sheetClose">Fermer</button></div>
 </div></div>
 <div class="toast" id="toast"></div>
@@ -753,7 +754,7 @@ const NOF = (() => {
     const q = (t) => (t.endsWith("2'") || t.endsWith('2') ? 2 : t.endsWith("'") ? 3 : 1);
     for (const t of seq) {
       const prev = out[out.length - 1], L = t.replace(/[2']/g, '');
-      if (prev && prev.replace(/[2']/g, '') === L && /^[URFDLBy]$/.test(L)) {
+      if (prev && prev.replace(/[2']/g, '') === L && /^[URFDLBxyz]$/.test(L)) {
         const n = (q(prev) + q(t)) % 4; out.pop();
         if (n) out.push(L + ['', '', '2', "'"][n]);
       } else out.push(t);
@@ -784,7 +785,43 @@ const NOF = (() => {
     // on ne garde la version pivotée que si elle est nettement plus simple
     return merge(fin.c < orig - 2 ? fin.seq : toks).join(' ');
   }
-  return { convert };
+
+  // ---------- mode « toujours » : zéro F/B, rotations x, y, z autorisées ----------
+  const I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  const mul = (a, b) => { const r = []; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) r.push(a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j]); return r; };
+  const rm = (ax, q) => { const c = [1, 0, -1, 0][(q % 4 + 4) % 4], s = [0, 1, 0, -1][(q % 4 + 4) % 4]; return ax === 'x' ? [1, 0, 0, 0, c, -s, 0, s, c] : ax === 'y' ? [c, 0, s, 0, 1, 0, -s, 0, c] : [c, -s, 0, s, c, 0, 0, 0, 1]; };
+  const RT = { x: rm('x', -1), "x'": rm('x', 1), x2: rm('x', 2), y: rm('y', -1), "y'": rm('y', 1), y2: rm('y', 2), z: rm('z', -1), "z'": rm('z', 1), z2: rm('z', 2) };
+  const RTC = (t) => (t[0] === 'y' ? (t.endsWith('2') ? 2.6 : 1.6) : t.endsWith('2') ? 3.6 : 2.4);
+  const kk = (m) => m.join();
+  const ORI = [I3]; { const seen = new Set([kk(I3)]); for (let i = 0; i < ORI.length; i++) for (const t in RT) { const m = mul(RT[t], ORI[i]); if (!seen.has(kk(m))) { seen.add(kk(m)); ORI.push(m); } } }
+  const PATH = {};
+  for (const a of ORI) {
+    const ka = kk(a); PATH[ka] = { [ka]: { c: 0, seq: [] } };
+    for (const t1 in RT) { const m1 = mul(RT[t1], a), k1 = kk(m1), c1 = RTC(t1);
+      if (!PATH[ka][k1] || PATH[ka][k1].c > c1) PATH[ka][k1] = { c: c1, seq: [t1] };
+      for (const t2 in RT) { if (t2[0] === t1[0]) continue; const m2 = mul(RT[t2], m1), k2 = kk(m2), c2 = c1 + RTC(t2);
+        if (!PATH[ka][k2] || PATH[ka][k2].c > c2) PATH[ka][k2] = { c: c2, seq: [t1, t2] }; } }
+  }
+  const NRM = { U: [0, 1, 0], D: [0, -1, 0], R: [1, 0, 0], L: [-1, 0, 0], F: [0, 0, 1], B: [0, 0, -1] };
+  const faceAt = (m, f) => { const n = NRM[f], v = [0, 1, 2].map((i) => m[i * 3] * n[0] + m[i * 3 + 1] * n[1] + m[i * 3 + 2] * n[2]); return Object.keys(NRM).find((k) => NRM[k].join() === v.join()); };
+  const HARD = { F: 1, B: 1 };
+  const costMax = (p, like) => (p.kind === 'rot' ? 0.6 : HARD[like] ? 40 : cost(p, like));
+  function convertMax(alg) {
+    const toks = alg.replace(/[()]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (!toks.length) return alg;
+    let best = { [kk(I3)]: { c: 0, seq: [] } };
+    for (const tok of toks) {
+      const p = parse(tok), nb = {};
+      for (const k in best) for (const m2 of ORI) {
+        const k2 = kk(m2), pt = PATH[k][k2]; if (!pt) continue;
+        const like = faceAt(m2, p.like), c = best[k].c + pt.c + costMax(p, like);
+        if (!nb[k2] || nb[k2].c > c) nb[k2] = { c, seq: [...best[k].seq, ...pt.seq, render(p, like)] };
+      }
+      best = nb;
+    }
+    return merge(Object.values(best).sort((a, b) => a.c - b.c)[0].seq).join(' ');
+  }
+  return { convert: (a, level) => (level === 'max' ? convertMax(a) : convert(a)), convertMax };
 })();
 
 
@@ -853,8 +890,9 @@ const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v === n
 const ST = Object.assign({ status: {}, stats: {}, set: { pad: false, mask: true, nof: false, loop: true, awake: true }, cat: 'f2l', filter: 'all', mode: 'guided', qReview: true, qCats: ['f2l', 'oll', 'pll', 'beg'] }, LS.get('algotrainer', {}));
 const save = () => LS.set('algotrainer', ST);
 const stat = (id) => (ST.stats[id] = ST.stats[id] || { ok: 0, fail: 0, best: null });
-const dispAlg = (a) => (ST.set.nof ? NOF.convert(a) : a);
+const dispAlg = (a) => (ST.set.nof ? NOF.convert(a, ST.set.nof) : a);
 const fmtAlg = (a) => a.replace(/'/g, '′');
+const ROT_HELP = { "y'": 'pivote tout le cube, la face avant part à droite', y: 'pivote tout le cube, la face avant part à gauche', y2: 'pivote tout le cube d’un demi-tour', x: 'bascule tout le cube vers l’arrière, la face avant monte en haut', "x'": 'bascule tout le cube vers l’avant, la face du haut vient devant', x2: 'retourne tout le cube (demi-tour vers l’arrière)', z: 'penche tout le cube vers la droite, la face du haut part à droite', "z'": 'penche tout le cube vers la gauche, la face du haut part à gauche', z2: 'tourne tout le cube d’un demi-tour sur le côté' };
 const toks = (a) => a.trim().split(/\s+/).filter(Boolean);
 let toastT;
 function toast(m, ms = 2600) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
@@ -871,9 +909,16 @@ function rotF(axis, th) { const c = Math.cos(th), s = Math.sin(th); if (axis ===
 const FACEDEF = [['R', [1, 0, 0], [0, 1, 0], [0, 0, 1]], ['L', [-1, 0, 0], [0, 1, 0], [0, 0, 1]], ['U', [0, 1, 0], [1, 0, 0], [0, 0, 1]], ['D', [0, -1, 0], [1, 0, 0], [0, 0, 1]], ['F', [0, 0, 1], [1, 0, 0], [0, 1, 0]], ['B', [0, 0, -1], [1, 0, 0], [0, 1, 0]]];
 const LIGHT = (() => { const v = [-0.4, 0.85, 0.6], l = Math.hypot(...v); return v.map((x) => x / l); })();
 function rpoly(ctx, P, r) {
-  const n = P.length, mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  ctx.beginPath(); const m = mid(P[n - 1], P[0]); ctx.moveTo(m[0], m[1]);
-  for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n], mm = mid(a, b); ctx.arcTo(a[0], a[1], mm[0], mm[1], r); }
+  // coins arrondis robustes : courbe entre deux points pris sur chaque bord (jamais de débordement)
+  const n = P.length; ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = P[(i + n - 1) % n], c = P[i], b = P[(i + 1) % n];
+    const la = Math.hypot(a[0] - c[0], a[1] - c[1]) || 1, lb = Math.hypot(b[0] - c[0], b[1] - c[1]) || 1;
+    const d1 = Math.min(r, la * 0.3), d2 = Math.min(r, lb * 0.3);
+    const p1 = [c[0] + (a[0] - c[0]) * d1 / la, c[1] + (a[1] - c[1]) * d1 / la], p2 = [c[0] + (b[0] - c[0]) * d2 / lb, c[1] + (b[1] - c[1]) * d2 / lb];
+    if (i === 0) ctx.moveTo(p1[0], p1[1]); else ctx.lineTo(p1[0], p1[1]);
+    ctx.quadraticCurveTo(c[0], c[1], p2[0], p2[1]);
+  }
   ctx.closePath();
 }
 function drawCube(ctx, W, H, cube, o) {
@@ -882,14 +927,16 @@ function drawCube(ctx, W, H, cube, o) {
   const V = m3(rotF('x', (o.pitch * Math.PI) / 180), rotF('y', (o.yaw * Math.PI) / 180));
   let VA = V, isMov = () => false;
   if (o.anim) { const i = { x: 0, y: 1, z: 2 }[o.anim.axis]; VA = m3(V, rotF(o.anim.axis, o.anim.angle)); isMov = (p) => o.anim.layer(p.pos[i]); }
-  const groups = [{ T: V, list: [] }, { T: VA, list: [] }];
-  for (const p of cube) groups[isMov(p) ? 1 : 0].list.push(p);
-  for (const g of groups) { let z = 0; g.list.forEach((p) => { p._z = mv3(g.T, p.pos)[2]; z += p._z; }); g.z = g.list.length ? z / g.list.length : 0; }
-  groups.sort((a, b) => a.z - b.z);
+  // ordre de dessin : on découpe le cube en 3 tranches le long de l'axe du mouvement.
+  // Les tranches restent séparées pendant la rotation : on dessine la plus éloignée de la caméra d'abord.
+  const ai = o.anim ? { x: 0, y: 1, z: 2 }[o.anim.axis] : 1, cam = [V[6] * Dd, V[7] * Dd, V[8] * Dd];
+  const slabs = {}; for (const p of cube) (slabs[p.pos[ai]] = slabs[p.pos[ai]] || []).push(p);
+  const order = Object.keys(slabs).map(Number).sort((a, b) => Math.abs(cam[ai] - b) - Math.abs(cam[ai] - a));
+  const dist = (T, p) => { const v = mv3(T, p.pos); return v[0] * v[0] + v[1] * v[1] + (Dd - v[2]) * (Dd - v[2]); };
+  const groups = order.map((k) => { const list = slabs[k], T = isMov(list[0]) ? VA : V; list.forEach((p) => (p._d = dist(T, p))); return { T, list: list.sort((a, b) => b._d - a._d) }; });
   const proj = (v) => { const f = Dd / (Dd - v[2]); return [cx + v[0] * S * f, cy - v[1] * S * f]; };
   ctx.lineJoin = 'round';
   for (const g of groups) {
-    g.list.sort((a, b) => a._z - b._z);
     for (const p of g.list) for (const [k, n, u, v] of FACEDEF) {
       const wn = mv3(g.T, mv3(p.rot, n)); if (wn[2] <= 0.002) continue;
       const d = Math.max(0, wn[0] * LIGHT[0] + wn[1] * LIGHT[1] + wn[2] * LIGHT[2]);
@@ -898,7 +945,7 @@ function drawCube(ctx, W, H, cube, o) {
       const corners = (s) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => proj(mv3(g.T, [c[0] + (ru[0] * a + rv[0] * b) * s, c[1] + (ru[1] * a + rv[1] * b) * s, c[2] + (ru[2] * a + rv[2] * b) * s])));
       const body = corners(0.5); ctx.fillStyle = '#15171c'; ctx.beginPath(); body.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#15171c'; ctx.lineWidth = 1; ctx.stroke();
       const ax = n[0] ? 0 : n[1] ? 1 : 2;
-      if (p.home[ax] === n[ax]) {
+      if (p.home[ax] === n[ax] && wn[2] > 0.09) {
         const key = o.color(p, k);
         ctx.fillStyle = shade(rgbOf(key), 0.72 + 0.28 * d);
         rpoly(ctx, corners(0.42), S * 0.09); ctx.fill();
@@ -993,12 +1040,13 @@ const Q = { ok: 0, n: 0, demoted: [], last: null };
 const MAXG = 6, MAXQ = 3;
 const algOf = () => { const all = [T.item.alg, ...(T.item.alts || [])]; return all[T.alt % all.length]; };
 function openTrainer(it, quiz) {
-  T.item = it; T.quiz = quiz; T.alt = 0; T.qErr = 0; T.revealed = false; T.memStreak = 0; T.streak = 0;
+  T.free = false; T.item = it; T.quiz = quiz; T.alt = 0; T.qErr = 0; T.revealed = false; T.memStreak = 0; T.streak = 0;
   T.mode = quiz ? 'memory' : ST.mode;
   [T.yaw, T.pitch] = viewOf(it);
   show('train'); restart(); sizeCv();
 }
 function restart() {
+  if (T.free) return freeRestart();
   T.disp = dispAlg(algOf());
   T.trk = new LIVE.Tracker(LIVE.convert(T.disp, 0));
   T.cube = startOf(T.item); T.logic = startOf(T.item);
@@ -1013,6 +1061,7 @@ function goalOK(c) {
 }
 function onMove(f, d) {
   if (window.KeepAwake) KeepAwake.ping();
+  if (T.free) return freeMove(f, d);
   if ($('vTrain').classList.contains('hidden') || !T.item || T.locked || T.phase === 'done' || T.phase === 'failed') return;
   const mv = parseMove(f + (d < 0 ? "'" : ''));
   T.queue.push(mv); applyMove(T.logic, mv);
@@ -1020,11 +1069,7 @@ function onMove(f, d) {
   const ok = T.trk.move(f, d);
   if (!ok) {
     T.errors++; flash('bad'); stat(T.item.id).fail++; save();
-    if (T.mode === 'guided') {
-      if (T.errors >= MAXG) lockReset(`${MAXG} erreurs : on recommence`);
-      else renderTrain();
-      return;
-    }
+    if (T.mode === 'guided') { lockReset('Mauvais mouvement : on recommence'); return; }
     if (T.quiz) {
       T.qErr++;
       if (T.qErr > MAXQ) {
@@ -1062,13 +1107,14 @@ function success() {
   banner(`✓ Réussi · ${fmtT(sec)}${ST.set.loop ? ' · on repart' : ''}`, 'ok', 1100); renderTrain();
   if (ST.set.loop) setTimeout(() => { if (T.phase === 'done' && !T.quiz && T.item) restart(); }, 1200);
 }
-const fmtT = (s) => s.toFixed(1).replace('.', ',') + ' s';
+const fmtT = (s) => (s >= 60 ? Math.floor(s / 60) + ':' + (s % 60).toFixed(1).padStart(4, '0').replace('.', ',') : s.toFixed(1).replace('.', ',') + ' s');
 let bannerT;
 function banner(txt, kind, ms) { const b = $('banner'); b.textContent = txt; b.className = 'banner ' + (kind || ''); clearTimeout(bannerT); if (ms) bannerT = setTimeout(() => b.classList.add('hidden'), ms); }
 function flash(k) { const f = $('flash'); f.className = 'flash ' + k; setTimeout(() => (f.className = 'flash'), 350); }
 
 function renderTrain() {
   const it = T.item; if (!it) return;
+  if (T.free) return renderFree();
   $('tName').textContent = it.name;
   $('modeSeg').classList.toggle('hidden', T.quiz);
   $('modeSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.m === T.mode));
@@ -1079,20 +1125,18 @@ function renderTrain() {
   if (hideAlg) A.innerHTML = `<div class="masked"><span class="dots">• • • • •</span><span>Algo masqué : fais-le de mémoire</span></div>`;
   else {
     A.innerHTML = (fix && T.mode === 'guided' ? `<span class="tok fix" title="Annule ton erreur">↺ ${fmtAlg(T.trk.next())}</span>` : '') +
-      tk.map((t, i) => `<span class="tok ${/^y/.test(t) ? 'rot ' : ''}${i < cur || T.phase === 'done' ? 'done' : i === cur && !fix && T.phase !== 'failed' ? 'cur' : ''}">${/^y/.test(t) ? '⟲' : ''}${fmtAlg(t)}</span>`).join('');
+      tk.map((t, i) => `<span class="tok ${/^[xyz]/.test(t) ? 'rot ' : ''}${i < cur || T.phase === 'done' ? 'done' : i === cur && !fix && T.phase !== 'failed' ? 'cur' : ''}">${/^[xyz]/.test(t) ? '⟲' : ''}${fmtAlg(t)}</span>`).join('');
   }
-  const rots = [...new Set(tk.filter((t) => /^y/.test(t)))];
+  const rots = [...new Set(tk.filter((t) => /^[xyz]/.test(t)))];
   $('rotHelp').classList.toggle('hidden', hideAlg || !rots.length);
-  $('rotHelp').innerHTML = rots.map((t) => `<b>⟲${fmtAlg(t)}</b> : pivote tout le cube, la face avant part ${t === "y'" ? 'à droite' : t === 'y' ? 'à gauche' : 'derrière (demi-tour)'}`).join(' · ');
+  $('rotHelp').innerHTML = rots.map((t) => `<b>⟲${fmtAlg(t)}</b> : ${ROT_HELP[t] || ''}`).join('<br>');
   // erreurs + message
   const E = $('errs');
   if (T.quiz) E.innerHTML = `Erreurs ${Array.from({ length: MAXQ }, (_, i) => `<i class="${i < T.qErr ? 'on' : ''}"></i>`).join('')}`;
-  else if (T.mode === 'guided') E.innerHTML = `Erreurs ${Array.from({ length: MAXG }, (_, i) => `<i class="${i < T.errors ? 'on' : ''}"></i>`).join('')}`;
   else E.innerHTML = '';
   const M = $('msg'); M.className = 'msg';
   if (T.phase === 'failed') { M.textContent = 'Regarde l’algo, puis passe au suivant.'; M.className = 'msg bad'; }
-  else if (fix && T.mode === 'guided') { M.textContent = `Mauvais mouvement : annule-le (${fmtAlg(T.trk.next())})`; M.className = 'msg bad'; }
-  else if (T.mode === 'guided') M.textContent = T.streak ? streakTxt() : T.phase === 'ready' ? 'Exécute l’algo sur ton cube.' : '';
+  else if (T.mode === 'guided') M.textContent = T.streak ? streakTxt() : 'Exécute l’algo. Une erreur et ça repart de zéro.';
   else if (T.quiz) M.textContent = 'Une erreur = on recommence. À la 4e, l’algo passe en « À revoir ».';
   else M.textContent = T.streak ? streakTxt() + ' de mémoire' : 'Une seule erreur et ça repart de zéro.';
   // actions
@@ -1118,6 +1162,95 @@ function reveal() {
   T.revealed = true;
   if (T.quiz && ST.status[T.item.id] !== 'review') { ST.status[T.item.id] = 'review'; save(); Q.demoted.push(T.item.id); toast('Algo passé en « À revoir »'); }
   renderTrain();
+}
+
+
+// ===================== MODE LIBRE =====================
+const FREE = { id: 'free', name: 'Mode libre', cat: 'free', mask: 'all', alg: '', alts: [] };
+const ORI24 = (() => { const out = [ID.slice()], seen = new Set([ID.join()]); const gens = [rotMat('x', 1), rotMat('y', 1)];
+  for (let i = 0; i < out.length; i++) for (const g of gens) { const m = mulMM(g, out[i]); if (!seen.has(m.join())) { seen.add(m.join()); out.push(m); } } return out; })();
+// état du cube connecté (54 autocollants) -> modèle de pièces
+function cubiesFromStickers(st) {
+  const cube = [], used = new Set(), letters = (p) => [0, 1, 2].filter((k) => p[k]).map((k) => { const n = [0, 0, 0]; n[k] = p[k]; return { n, f: faceOfNormal(n) }; });
+  const homes = newCube().map((c) => c.home);
+  for (const p of homes) {
+    const nz = Math.abs(p[0]) + Math.abs(p[1]) + Math.abs(p[2]);
+    if (nz === 1) { cube.push({ home: p, pos: p.slice(), rot: ID.slice() }); continue; }
+    const here = letters(p).map(({ n }) => ({ n, c: st[LIVE.sIdx(p, n)] }));
+    const cols = here.map((x) => x.c).sort().join('');
+    const home = homes.find((h) => !used.has(h.join()) && letters(h).map((x) => x.f).sort().join('') === cols);
+    if (!home) return null;
+    const M = ORI24.find((m) => letters(home).every(({ n, f }) => { const w = mulMV(m, n), t = here.find((x) => x.c === f); return t && w.join() === t.n.join(); }));
+    if (!M) return null;
+    used.add(home.join()); cube.push({ home, pos: p.slice(), rot: M });
+  }
+  return cube;
+}
+function scramble(n = 20) {
+  const F = 'URFDLB', AX = { U: 0, D: 0, R: 1, L: 1, F: 2, B: 2 }, out = [];
+  while (out.length < n) {
+    const f = F[Math.random() * 6 | 0], a = out[out.length - 1], b = out[out.length - 2];
+    if (a && a[0] === f) continue;
+    if (a && b && AX[a[0]] === AX[f] && AX[b[0]] === AX[f]) continue;
+    out.push(f + ['', "'", '2'][Math.random() * 3 | 0]);
+  }
+  return out.join(' ');
+}
+let syncWanted = false;
+function openFree() {
+  VIEW = 'train'; T.free = true; T.quiz = false; T.item = FREE; T.mode = 'free';
+  [T.yaw, T.pitch] = [-35, 26];
+  $('vTrain').classList.remove('hidden'); $('vLib').classList.add('hidden');
+  document.querySelectorAll('[data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === 'free'));
+  if (BT.connected) { newScramble(); syncFromCube(); } else newScramble();
+  sizeCv();
+}
+function newScramble() { T.scr = scramble(); T.freeFrom = 'scramble'; T.freeStart = applyAlg(newCube(), T.scr); freeRestart(); }
+function freeRestart() {
+  T.cube = cloneCube(T.freeStart); T.logic = cloneCube(T.freeStart); T.queue = []; T.anim = null;
+  T.phase = 'ready'; T.t0 = 0; T.t1 = 0; T.nMoves = 0; T.locked = false; T.dirty = true; $('banner').classList.add('hidden'); renderFree();
+}
+function syncFromCube() {
+  if (!BT.connected) { toast('Connecte d’abord ton cube'); return; }
+  syncWanted = true; BT.send(0x33).catch(() => {}); toast('Lecture de l’état de ton cube…', 1500);
+}
+function onCubeState(fc) {
+  if (!syncWanted || !T.free) return;
+  syncWanted = false;
+  const st = LIVE.fromNative(fc), err = LIVE.validate(st), cube = !err && cubiesFromStickers(st);
+  if (!cube) { toast('État du cube illisible : essaie « Nouveau mélange » ou recommence'); return; }
+  T.freeStart = cube; T.freeFrom = 'cube'; T.scr = ''; freeRestart();
+  toast(cube.every(isHome) ? 'Ton cube est déjà résolu : mélange-le, ses mouvements s’affichent à l’écran' : 'État de ton cube copié ✓');
+}
+function freeMove(f, d) {
+  if ($('vTrain').classList.contains('hidden') || T.locked) return;
+  const mv = parseMove(f + (d < 0 ? "'" : ''));
+  T.queue.push(mv); applyMove(T.logic, mv);
+  if (T.phase === 'done') { renderFree(); return; }
+  if (T.phase === 'ready') { if (T.logic.every(isHome)) { renderFree(); return; } T.phase = 'run'; T.t0 = performance.now(); }
+  T.nMoves++;
+  if (T.logic.every(isHome)) {
+    T.phase = 'done'; T.t1 = performance.now(); const sec = (T.t1 - T.t0) / 1000;
+    const rec = ST.freeBest == null || sec < ST.freeBest; if (rec) { ST.freeBest = sec; save(); }
+    flash('ok'); banner(`✓ Résolu en ${fmtT(sec)} · ${T.nMoves} mouvements${rec ? ' · record !' : ''}`, 'ok', 0);
+  }
+  renderFree();
+}
+function renderFree() {
+  $('tName').textContent = 'Mode libre';
+  $('modeSeg').classList.add('hidden'); $('qScore').classList.add('hidden'); $('rotHelp').classList.add('hidden'); $('errs').innerHTML = '';
+  const A = $('alg');
+  if (T.freeFrom === 'cube') A.innerHTML = `<div class="masked"><span>État copié depuis ton cube</span></div>`;
+  else A.innerHTML = `<span class="msg" style="width:100%;font-size:14px;color:var(--mute)">Mélange</span>` + toks(T.scr).map((t) => `<span class="tok" style="font-size:20px;min-width:0">${fmtAlg(t)}</span>`).join('');
+  const M = $('msg'); M.className = 'msg';
+  M.textContent = T.phase === 'ready' ? 'Résous le cube : le chrono démarre au premier mouvement.' : T.phase === 'run' ? `${T.nMoves} mouvement${T.nMoves > 1 ? 's' : ''}` : `Résolu${ST.freeBest != null ? ' · record ' + fmtT(ST.freeBest) : ''}`;
+  const AC = $('actions'); AC.innerHTML = '';
+  const add = (l, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = l; b.onclick = fn; AC.appendChild(b); };
+  add('Nouveau mélange', T.phase === 'done' ? 'primary' : '', newScramble);
+  add('↺ Recommencer ce mélange', '', freeRestart);
+  if (BT.connected) add('Copier l’état de mon cube', '', syncFromCube);
+  $('pad').classList.toggle('hidden', !ST.set.pad);
+  $('hint').textContent = BT.connected ? 'Cube connecté · glisse pour changer la vue' : 'Connecte ton cube pour copier son mélange réel';
 }
 
 // ===================== QUIZ =====================
@@ -1158,15 +1291,16 @@ function renderQuiz() {
 let VIEW = 'lib';
 function show(v) {
   VIEW = v;
-  $('vTrain').classList.toggle('hidden', v !== 'train');
-  $('vLib').classList.toggle('hidden', v === 'train');
-  document.querySelectorAll('[data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === (v === 'train' ? (T.quiz ? 'quiz' : 'lib') : v)));
+  $('vTrain').classList.toggle('hidden', v !== 'train' && v !== 'free');
+  $('vLib').classList.toggle('hidden', v === 'train' || v === 'free');
+  document.querySelectorAll('[data-go]').forEach((b) => b.classList.toggle('on', b.dataset.go === (v === 'train' ? (T.free ? 'free' : T.quiz ? 'quiz' : 'lib') : v)));
   if (v === 'lib') renderLib(); else if (v === 'quiz') renderQuiz();
-  if (v !== 'train') { T.item = null; $('banner').classList.add('hidden'); }
+  if (v === 'free') { openFree(); return; }
+  if (v !== 'train') { T.item = null; T.free = false; $('banner').classList.add('hidden'); }
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => show(b.dataset.go)));
-$('tBack').onclick = () => show(T.quiz ? 'quiz' : 'lib');
+$('tBack').onclick = () => show(T.free ? 'lib' : T.quiz ? 'quiz' : 'lib');
 $('modeSeg').querySelectorAll('button').forEach((b) => (b.onclick = () => { T.mode = ST.mode = b.dataset.m; save(); T.memStreak = 0; T.revealed = false; restart(); }));
 
 // ===================== CANVAS / ANIMATION =====================
@@ -1181,7 +1315,7 @@ new ResizeObserver(sizeCv).observe(cv);
   cv.addEventListener('dblclick', () => { if (T.item) { [T.yaw, T.pitch] = viewOf(T.item); T.dirty = true; } });
 })();
 function tick(now) {
-  if (VIEW === 'train' && T.item) {
+  if ((VIEW === 'train' || VIEW === 'free') && T.item) {
     if (!T.anim && T.queue.length) { const mv = T.queue.shift(); T.anim = { mv, t0: now, dur: T.queue.length > 1 ? 55 : 120 }; }
     let anim = null;
     if (T.anim) {
@@ -1199,11 +1333,11 @@ requestAnimationFrame(tick);
 
 // ===================== ENTRÉES : CUBE, CLAVIER, PAVÉ =====================
 const BT = new LIVE.SmartCube({
-  connected(name) { btUI(name); toast('Cube connecté'); if (VIEW === 'train') renderTrain(); },
+  connected(name) { btUI(name); toast('Cube connecté'); if (T.free && VIEW === 'train') syncWanted = true; if (VIEW === 'train') renderTrain(); },
   disconnected() { btUI(); toast('Cube déconnecté'); if (VIEW === 'train') renderTrain(); },
   battery(b) { btUI(null, b); },
   move(m) { if (!btGotMove) { btGotMove = true; toast('Mouvements du cube reçus ✓'); } const { f, d } = LIVE.nativeMove(m); onMove(f, d); },
-  state() {},
+  state(fc) { onCubeState(fc); },
 });
 let btName = '', btBat = null, btGotMove = false;
 const IN_FRAME = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
@@ -1247,14 +1381,18 @@ document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key.toUpperCase();
   if ('URFDLB'.includes(k) && k.length === 1) { e.preventDefault(); onMove(k, e.shiftKey ? -1 : 1); }
-  else if (e.code === 'Space' && VIEW === 'train') { e.preventDefault(); restart(); }
+  else if (e.code === 'Space' && VIEW === 'train') { e.preventDefault(); T.free ? freeRestart() : restart(); }
   else if (e.key === 'Escape' && VIEW === 'train') $('tBack').click();
 });
 $('pad').innerHTML = ['U', 'R', 'F', 'D', 'L', 'B'].map((f) => `<button data-f="${f}" data-d="1">${f}</button>`).join('') + ['U', 'R', 'F', 'D', 'L', 'B'].map((f) => `<button data-f="${f}" data-d="-1">${f}′</button>`).join('');
 $('pad').querySelectorAll('button').forEach((b) => (b.onclick = () => onMove(b.dataset.f, +b.dataset.d)));
 
 // ===================== RÉGLAGES =====================
-const opts = [['oPad', 'pad'], ['oMask', 'mask'], ['oNoF', 'nof'], ['oLoop', 'loop'], ['oAwake', 'awake']];
+const opts = [['oPad', 'pad'], ['oMask', 'mask'], ['oLoop', 'loop'], ['oAwake', 'awake']];
+if (ST.set.nof === true) ST.set.nof = 'auto';
+function nofUI() { document.querySelectorAll('#oNoF button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(ST.set.nof || false))); }
+document.querySelectorAll('#oNoF button').forEach((b) => (b.onclick = () => { ST.set.nof = b.dataset.v === 'false' ? false : b.dataset.v; save(); nofUI(); if (VIEW === 'train') restart(); else show(VIEW); }));
+nofUI();
 for (const [id, k] of opts) { $(id).checked = !!ST.set[k]; $(id).onchange = (e) => { ST.set[k] = e.target.checked; save(); if (VIEW === 'train') { if (k === 'nof') restart(); else { renderTrain(); T.dirty = true; } } else show(VIEW); }; }
 $('setBtn').onclick = () => $('sheet').classList.remove('hidden');
 $('sheetClose').onclick = () => $('sheet').classList.add('hidden');
